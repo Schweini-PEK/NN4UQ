@@ -47,6 +47,7 @@ def train(**kwargs):
             loss_meter.reset()
             loss = 0
             for d in data_train_loader:
+                optimizer.zero_grad()
                 x, y = d
                 if options.use_gpu:
                     x = x.cuda()
@@ -55,7 +56,6 @@ def train(**kwargs):
                 out = model(x.float())
                 loss = criterion(out, y.float())
                 loss.backward()
-                optimizer.zero_grad()
                 optimizer.step()
 
                 loss_meter.add(loss.data)
