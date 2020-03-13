@@ -95,7 +95,7 @@ def val(model, data_loader: DataLoader):
     return loss_meter
 
 
-def test(**kwargs):
+def predict(**kwargs):
     options.parse(kwargs)
     model = getattr(models, options.model)()
     if options.load_model_path:
@@ -103,10 +103,36 @@ def test(**kwargs):
     if options.use_gpu:
         model = model.cuda()
 
+    vis = utils.Visualizer(options.env)
     test_data = dataset.lsode.LoadDataset(test=True, root=options.root + options.load_testset_path)
-    data_test_loader = DataLoader(test_data, num_workers=options.num_workers)
+    test_batch_size = 2
+    data_test_loader = DataLoader(test_data, num_workers=options.num_workers, batch_size=test_batch_size)
+
+    truth = []  # length is 300, ith element in which is [[x_0^i, x_1^i, ..., x_batch^i]]
+    prediction = []
     for d in data_test_loader:
-        x, y = d
+        x, y = d  # x = [batch_size, out_dim]
+        x_init, alpha, delta = x[:, 0], x[:, 1], x[:, 2]
+        x_truth = x_init
+
+        for i in range(options.trajectory_length):
+            out = model(x.float())  # out = [batch_size, out_dim]
+            x[:, 0] = out.squeeze()  # update the state variable
+            prediction.append([float(x[0][0]), float(x[1][0])])
+            vis.plot('pred_1', float(x[0][0]))
+            vis.plot('pred_2', float(x[1][0]))
+
+            temp_list = []
+            for j in range(test_batch_size):
+                x_truth[j] = utils.lsode.state_predictor(x_truth[j], alpha[j], delta[j])
+                temp_list.append(float(x_truth[j]))
+
+            truth.append(temp_list)
+            vis.plot('truth_1', float(x_truth[0]))
+            vis.plot('truth_2', float(x_truth[1]))
+
+        break
+
         # TODO finish the prediction
 
 

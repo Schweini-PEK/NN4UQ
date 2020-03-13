@@ -2,6 +2,7 @@
   <dictionary name="schweini">
     <words>
       <w>nvidia</w>
+      <w>testset</w>
     </words>
   </dictionary>
 </component>

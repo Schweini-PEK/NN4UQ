@@ -22,6 +22,8 @@ class DefaultConfig(object):
     lr = 0.01
     lr_decay = 0.95
 
+    trajectory_length = 100
+
 
 def parse(self, kwargs):
     """ Update the config parameters from kwargs
