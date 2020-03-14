@@ -1,1 +1,2 @@
-from .shallowRes import ShallowRes
+from .mlp import MLP
+from .shallowResBN import ShallowResBN

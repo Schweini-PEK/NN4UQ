@@ -1,5 +1,6 @@
 import warnings
 
+import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from torchnet import meter
@@ -21,7 +22,7 @@ def train(**kwargs):
         model.cuda()
 
     vis = utils.Visualizer(options.env)
-    data = dataset.lsode.LoadDataset(root=options.root)  # enter 'size=' to change the dataset (have to be existed).
+    data = dataset.lsode.LoadDataset(root=options.root, size=options.train_size)
     indices = list(range(len(data)))
     milestone = utils.kfold.k_fold_index_gen(indices, k=options.k_fold)
 
@@ -61,14 +62,14 @@ def train(**kwargs):
                 loss_meter.add(loss.data)
 
             if (epoch + 1) % options.print_freq == 0:
-                print('fold: {}, epoch: {}, loss: {:.4}'.format(fold + 1, epoch + 1, loss.data.item()))
+                # print('fold: {}, epoch: {}, loss: {:.4}'.format(fold + 1, epoch + 1, loss.data.item()))
                 vis.plot('loss', loss_meter.value()[0])
 
         if len(milestone) != 2:  # Make sure there is a val dataset.
             loss_val = val(model, data_val_loader)
             vis.plot('val loss', loss_val.value()[0])
 
-        model.save()
+    options.load_model_path = model.save()
 
 
 def val(model, data_loader: DataLoader):
@@ -104,36 +105,29 @@ def predict(**kwargs):
         model = model.cuda()
 
     vis = utils.Visualizer(options.env)
-    test_data = dataset.lsode.LoadDataset(test=True, root=options.root + options.load_testset_path)
-    test_batch_size = 2
-    data_test_loader = DataLoader(test_data, num_workers=options.num_workers, batch_size=test_batch_size)
 
-    truth = []  # length is 300, ith element in which is [[x_0^i, x_1^i, ..., x_batch^i]]
-    prediction = []
-    for d in data_test_loader:
-        x, y = d  # x = [batch_size, out_dim]
-        x_init, alpha, delta = x[:, 0], x[:, 1], x[:, 2]
-        x_truth = x_init
+    x_init, alpha, delta = options.x_init, options.alpha, options.delta
+    # state = torch.tensor([x_init, alpha, delta])
+    state = torch.tensor([[x_init, alpha, delta], [x_init, alpha, delta]])
+    x_truth = x_init
 
-        for i in range(options.trajectory_length):
-            out = model(x.float())  # out = [batch_size, out_dim]
-            x[:, 0] = out.squeeze()  # update the state variable
-            prediction.append([float(x[0][0]), float(x[1][0])])
-            vis.plot('pred_1', float(x[0][0]))
-            vis.plot('pred_2', float(x[1][0]))
+    # vis.plot('pred_1', float(state[0]))
+    vis.plot('pred_1', float(state[0][0]))
+    vis.plot('truth_1', x_truth)
 
-            temp_list = []
-            for j in range(test_batch_size):
-                x_truth[j] = utils.lsode.state_predictor(x_truth[j], alpha[j], delta[j])
-                temp_list.append(float(x_truth[j]))
+    for i in range(options.trajectory_length):
+        out = model(state.float())
+        state[:, 0] = out.squeeze()
+        # vis.plot('pred_1', float(state[0]))
+        vis.plot('pred_1', float(state[0][0]))
 
-            truth.append(temp_list)
-            vis.plot('truth_1', float(x_truth[0]))
-            vis.plot('truth_2', float(x_truth[1]))
+        x_truth = utils.lsode.state_predictor(x_truth, alpha, delta)
+        vis.plot('truth_1', x_truth)
 
-        break
 
-        # TODO finish the prediction
+def yitiaolong():
+    train()
+    predict()
 
 
 if __name__ == '__main__':

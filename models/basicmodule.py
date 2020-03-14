@@ -10,7 +10,7 @@ class BasicModule(torch.nn.Module):
 
     def __init__(self, opt=None):
         super(BasicModule, self).__init__()
-        self.model_name = str(type(self))
+        self.model_name = str(type(self)).split("'")[1].split(".")[-1]
 
     def load(self, path):
         """Load a model from the path.

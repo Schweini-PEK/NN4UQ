@@ -2,27 +2,28 @@ import warnings
 
 
 class DefaultConfig(object):
-    model = 'ShallowRes'
-    load_model_path = "checkpoints/<class 'models.shallowRes.ShallowRes'>_0306_10:41:19.pth"
-    load_testset_path = 'testset.pkl'
+    model = 'ShallowResBN'
+    # load_model_path = "checkpoints/<class 'models.shallowRes.ShallowResBN'>_0312_19:00:50.pth"
+    load_model_path = "checkpoints/ShallowResBN_0313_22:38:09.pth"
     root = 'dataset/'
     dataset = 'lsode'
     env = 'default'
     use_gpu = False
+    print_freq = 1
+    num_workers = 4
 
+    train_size = 1000
     k_fold = 5
     batch_size = 128
     train_ratio = 0.9
-    num_workers = 4
-    print_freq = 50
-
-    result_file = 'result.csv'
-
     max_epoch = 400
     lr = 0.01
     lr_decay = 0.95
 
-    trajectory_length = 100
+    trajectory_length = 300
+    x_init = 1.0
+    alpha = 0.5
+    delta = 0.1
 
 
 def parse(self, kwargs):

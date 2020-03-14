@@ -30,3 +30,21 @@ def state_predictor(x0, alpha, dj):
     # LSODA is the most consistent solver
     xs = ode_sol.y
     return xs.transpose()[-1, 0]
+
+
+def trajectory(xinit, tinit, tfinal, alpha):
+    """Predict the state after dj as the length of the simulation time of the ODE model.
+
+    :param x0: The initial state variable.
+    :param alpha: The random parameter.
+    :param dj: The time lag between two experiment measurements.
+    :return: ???
+    """
+    tspan = [0, tfinal]
+    x0 = [xinit]
+    alpha = alpha
+    ode_sol = scipy.integrate.solve_ivp(lambda t, x: ode_model(t, x, alpha), tspan, x0, method='LSODA')
+    # LSODA is the most consistent solver
+    ts = ode_sol.t
+    xs = ode_sol.y
+    return ts, xs
