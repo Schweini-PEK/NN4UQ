@@ -6,8 +6,9 @@ class Swish(nn.Module):
 
     """
 
-    def __init__(self):
+    def __init__(self, beta=0.3):
         super(Swish, self).__init__()
+        self.beta = beta
 
     def forward(self, x):
-        return x * nn.functional.sigmoid(x)
+        return x * nn.functional.sigmoid(x * self.beta)

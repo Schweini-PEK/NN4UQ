@@ -4,7 +4,7 @@ import warnings
 class DefaultConfig(object):
     model = 'ShallowResBN'
     # load_model_path = "checkpoints/<class 'models.shallowRes.ShallowResBN'>_0312_19:00:50.pth"
-    load_model_path = "checkpoints/ShallowResBN_0313_22:38:09.pth"
+    load_model_path = "checkpoints/<class 'models.shallowRes.ShallowRes'>_0306_10:41:19.pth"
     root = 'dataset/'
     dataset = 'lsode'
     env = 'default'
@@ -12,7 +12,7 @@ class DefaultConfig(object):
     print_freq = 1
     num_workers = 4
 
-    train_size = 1000
+    train_size = 1500
     k_fold = 5
     batch_size = 128
     train_ratio = 0.9
@@ -20,7 +20,7 @@ class DefaultConfig(object):
     lr = 0.01
     lr_decay = 0.95
 
-    trajectory_length = 300
+    trajectory_length = 2
     x_init = 1.0
     alpha = 0.5
     delta = 0.1

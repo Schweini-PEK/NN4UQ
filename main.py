@@ -65,9 +65,9 @@ def train(**kwargs):
                 # print('fold: {}, epoch: {}, loss: {:.4}'.format(fold + 1, epoch + 1, loss.data.item()))
                 vis.plot('loss', loss_meter.value()[0])
 
-        if len(milestone) != 2:  # Make sure there is a val dataset.
-            loss_val = val(model, data_val_loader)
-            vis.plot('val loss', loss_val.value()[0])
+        # if len(milestone) != 2:  # Make sure there is a val dataset.
+        #     loss_val = val(model, data_val_loader)
+        #     vis.plot('val loss', loss_val.value()[0])
 
     options.load_model_path = model.save()
 
@@ -109,6 +109,7 @@ def predict(**kwargs):
     x_init, alpha, delta = options.x_init, options.alpha, options.delta
     # state = torch.tensor([x_init, alpha, delta])
     state = torch.tensor([[x_init, alpha, delta], [x_init, alpha, delta]])
+    print("init", state)
     x_truth = x_init
 
     # vis.plot('pred_1', float(state[0]))
@@ -117,7 +118,9 @@ def predict(**kwargs):
 
     for i in range(options.trajectory_length):
         out = model(state.float())
+        print("out", type(out), out)
         state[:, 0] = out.squeeze()
+        print("state", state[0], state[1])
         # vis.plot('pred_1', float(state[0]))
         vis.plot('pred_1', float(state[0][0]))
 
@@ -125,7 +128,7 @@ def predict(**kwargs):
         vis.plot('truth_1', x_truth)
 
 
-def yitiaolong():
+def in_one_breath():
     train()
     predict()
 
