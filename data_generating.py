@@ -15,7 +15,6 @@ def train_data_generating(train_size):
     :return: A list like [[x, alpha, delta], y]
     """
 
-    vis = utils.Visualizer(options.env)
     dataset = []
     p_lower_bound = 0.0
     p_upper_bound = 1.0

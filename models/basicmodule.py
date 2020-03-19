@@ -18,6 +18,7 @@ class BasicModule(torch.nn.Module):
         :param path: The path of the model.
         :return: The model
         """
+        path = "checkpoints/" + path + ".pth"
         self.load_state_dict(torch.load(path))
 
     def save(self, name=None):

@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 
 
@@ -11,4 +12,4 @@ class Swish(nn.Module):
         self.beta = beta
 
     def forward(self, x):
-        return x * nn.functional.sigmoid(x * self.beta)
+        return x * torch.sigmoid(x * self.beta)

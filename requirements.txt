@@ -1,3 +1,5 @@
+skorch
+visdom
 scipy
 numpy
 fire

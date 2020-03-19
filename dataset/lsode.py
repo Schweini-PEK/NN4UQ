@@ -28,3 +28,6 @@ class LoadDataset(Dataset):
 
     def __len__(self):
         return len(self.ode_frame)
+
+    def get_list_data(self):
+        return self.ode_frame
