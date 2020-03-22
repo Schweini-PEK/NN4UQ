@@ -3,20 +3,20 @@ import warnings
 
 class DefaultConfig(object):
     model = 'MLP'
-    # load_model_path = "checkpoints/<class 'models.shallowRes.ShallowResBN'>_0312_19:00:50.pth"
+    math_model = 'mlode'
     load_model_path = "MLP_0317_22:55:02"
     root = 'dataset/'
-    dataset = 'lsode'
-    use_gpu = False
-    print_freq = 1
-    num_workers = 4
+    n_data = 1500
 
-    train_size = 1500
+    use_gpu = False
+    num_workers = 4
+    print_freq = 1
+
     k_fold = 1
     batch_size = 2
     train_ratio = 0.9
-    max_epoch = 200
-    lr = 0.01
+    max_epoch = 2000
+    lr = 0.3
     lr_decay = 0.95
 
     trajectory_length = 100

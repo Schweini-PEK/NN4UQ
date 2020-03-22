@@ -6,3 +6,5 @@ A deep learning approach for uncertainty quantification based on "A Neural Netwo
 Enter the link "http://localhost:8097/" to check the plots.
 4. Use "python main.py train" to train the model. To change the default parameters in config, just add "--args=xx". 
 5. Have not tested on a Nvidia GPU.
+
+With GridSearchCV, the best lr is 0.3 and the best epoch size is 2000.

@@ -1,3 +1,4 @@
+import pickle
 import warnings
 
 import numpy as np
@@ -17,6 +18,19 @@ from config import options
 warnings.filterwarnings('ignore')
 
 
+def generate(**kwargs):
+    options.parse(kwargs)
+
+    n_data = options.n_data
+    math_model = options.math_model
+    generating_method = math_model + "_generating"
+
+    training_data = dataset.data_generating(generating_method, n_data)
+    path = options.root + math_model + str(n_data) + '.pkl'
+    with open(path, 'wb') as f:
+        pickle.dump(training_data, f)
+
+
 def train(**kwargs):
     options.parse(kwargs)
 
@@ -26,13 +40,14 @@ def train(**kwargs):
         model.cuda()
 
     viz = visdom.Visdom()
-    data = dataset.lsode.LoadDataset(root=options.root, size=options.train_size)
+    data = dataset.loader.LoadDataset(root=options.root, size=options.n_data)
     indices = list(range(len(data)))
     milestone = utils.kfold.k_fold_index_gen(indices, k=options.k_fold)
 
     criterion = nn.L1Loss()
     optimizer = optim.Adam(model.parameters())
     loss_meter = meter.AverageValueMeter()
+    loss_list = []
 
     for fold in range(len(milestone) - 1):
         if len(milestone) == 2:  # when k_fold is not just ONE FOLD.
@@ -64,14 +79,13 @@ def train(**kwargs):
                 optimizer.step()  # update parameters
                 loss_meter.add(loss.data)
 
-            if (epoch + 1) % options.print_freq == 0:
-                viz.line(Y=loss_meter.value()[0], update="append")
-
             if (epoch + 1) % 500 == 0:
                 model.save()
 
         if len(milestone) != 2:  # Make sure there is a val dataset.
             val(model, data_val_loader)
+
+    viz.line(Y=np.asarray(loss_list), X=np.asarray(range(options.max_epoch * options.k_fold)))
 
     model.save()
 
@@ -128,7 +142,7 @@ def predict(**kwargs):
             state[0] = model(state.float())
             print("state", state[0], state[1])
 
-            x_truth = utils.lsode.state_predictor(x_truth, alpha, delta)
+            x_truth = utils.ode.ode_predictor(x_truth, alpha, delta)
             viz.line(
                 X=np.column_stack((time, time)),
                 Y=np.column_stack((state[0], x_truth)),
@@ -137,7 +151,7 @@ def predict(**kwargs):
             )
 
 
-def new_train(**kwargs):
+def grid_train(**kwargs):
     options.parse(kwargs)
 
     viz = visdom.Visdom()
@@ -145,9 +159,7 @@ def new_train(**kwargs):
     if options.use_gpu:
         model = model.cuda()
 
-    data = dataset.lsode.LoadDataset(root=options.root, size=options.train_size)
-    # net = NeuralNetRegressor(model,
-    #                          max_epochs=options.max_epoch, lr=options.lr, verbose=1)
+    data = dataset.loader.LoadDataset(root=options.root, size=options.n_data)
     net = NeuralNetRegressor(models.MLP, max_epochs=options.max_epoch, lr=options.lr, verbose=1)
     n_features = len(data.ode_frame[0][0])
     x, y = utils.tools.list2sample(n_features, data.ode_frame)
@@ -167,6 +179,14 @@ def new_train(**kwargs):
     utils.tools.print_best_score(gs, params)
 
 
+def rnn_train(**kwargs):
+    options.parse(kwargs)
+
+    viz = visdom.Visdom()
+    model = getattr()
+
+
 if __name__ == '__main__':
     import fire
+
     fire.Fire()

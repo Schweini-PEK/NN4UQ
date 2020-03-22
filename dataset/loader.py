@@ -11,7 +11,7 @@ class LoadDataset(Dataset):
 
     def __init__(self, test=False, root="dataset/", state='train', size=1000):
         self.state = state
-        path = root + 'LSODE' + str(size) + '.pkl'
+        path = root + 'lsode' + str(size) + '.pkl'
         if test:
             path = root
         with open(path, 'rb') as f:
