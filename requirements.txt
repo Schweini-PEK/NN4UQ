@@ -1,3 +1,4 @@
+ray
 scikit-learn
 skorch
 visdom

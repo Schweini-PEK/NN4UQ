@@ -9,6 +9,7 @@ class BasicBlock(BasicModule):
         self.layer1 = nn.Sequential(nn.Linear(in_dim, n_hidden), nn.Tanh())
         self.layer2 = nn.Sequential(nn.Linear(n_hidden, n_hidden), nn.Tanh())
         self.layer3 = nn.Sequential(nn.Linear(n_hidden, n_hidden), nn.Tanh())
+        self.layer4 = nn.Sequential(nn.Linear(n_hidden, 2))
 
     def forward(self, x):
         identity = x
@@ -16,6 +17,7 @@ class BasicBlock(BasicModule):
         out = self.layer1(x)
         out = self.layer2(out)
         out = self.layer3(out)
+        out = self.layer4(out)
 
         out += identity
 
@@ -51,7 +53,7 @@ def _resnet(block, inplanes, n_hidden, k, pretrained=False, arch=None, **kwargs)
     return model
 
 
-def resnet(in_dim=1, n_hidden=30):
+def resnet(in_dim=2, n_hidden=30):
     model = _resnet(BasicBlock, in_dim, n_hidden, k=1)
     return model
 

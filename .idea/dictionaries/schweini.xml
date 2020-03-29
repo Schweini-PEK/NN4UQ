@@ -1,7 +1,10 @@
 <component name="ProjectDictionaryState">
   <dictionary name="schweini">
     <words>
+      <w>colab</w>
+      <w>cuda</w>
       <w>inplanes</w>
+      <w>lsoda</w>
       <w>lsode</w>
       <w>mlode</w>
       <w>nvidia</w>

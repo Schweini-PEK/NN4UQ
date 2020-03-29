@@ -8,7 +8,7 @@ class BasicModule(torch.nn.Module):
 
     """
 
-    def __init__(self, opt=None):
+    def __init__(self):
         super(BasicModule, self).__init__()
         self.model_name = str(type(self)).split("'")[1].split(".")[-1]
 

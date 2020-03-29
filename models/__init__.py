@@ -1,3 +1,2 @@
-from .mlp import MLP
-from .resnet import rs_resnet
-from .shallowResBN import ShallowResBN
+from .mlp import MLP, ShallowResBN
+from .resnet import rs_resnet, resnet

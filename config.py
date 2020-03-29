@@ -2,27 +2,30 @@ import warnings
 
 
 class DefaultConfig(object):
-    model = 'MLP'
-    math_model = 'mlode'
-    load_model_path = "MLP_0317_22:55:02"
-    root = 'dataset/'
-    n_data = 1500
+    func = 'train'
 
-    use_gpu = False
+    model = 'MLP'
+    math_model = 'lsode'
+    load_model_path = "MLP_0322_19:02:47"
+    base = "'/Users/schweini/Desktop/Mesbah/Code/NN4UQ/'"
+    root = 'dataset/'
+    n_data = 2000
+
+    use_gpu = True
+    colab = True
     num_workers = 4
     print_freq = 1
 
     k_fold = 1
     batch_size = 2
     train_ratio = 0.9
-    max_epoch = 2000
+    max_epoch = 1
     lr = 0.3
     lr_decay = 0.95
 
-    trajectory_length = 100
-    x_init = 1.0
-    alpha = 0.5
-    delta = 0.1
+    trajectory_length = 300
+    predicting = {'x_0': 1.0, 'delta': 0.1, 'alpha': 0.3225, 'mission': "single-trajectory",
+                  'truth_path': "dataset/trajectory.pkl"}
 
 
 def parse(self, kwargs):
@@ -44,4 +47,4 @@ def parse(self, kwargs):
 
 
 DefaultConfig.parse = parse
-options = DefaultConfig()
+config = DefaultConfig()

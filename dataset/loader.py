@@ -9,11 +9,9 @@ class LoadDataset(Dataset):
 
     """
 
-    def __init__(self, test=False, root="dataset/", state='train', size=1000):
+    def __init__(self, math_model, base=None, root='dataset/', state='train', size=1000):
         self.state = state
-        path = root + 'lsode' + str(size) + '.pkl'
-        if test:
-            path = root
+        path = base + root + math_model + str(size) + '.pkl'
         with open(path, 'rb') as f:
             self.ode_frame = pickle.load(f)
 
