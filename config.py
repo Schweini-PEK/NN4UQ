@@ -7,7 +7,7 @@ class DefaultConfig(object):
     model = 'MLP'
     math_model = 'lsode'
     load_model_path = "MLP_0322_19:02:47"
-    base = "'/Users/schweini/Desktop/Mesbah/Code/NN4UQ/'"
+    load_result_path = ''
     root = 'dataset/'
     n_data = 2000
 
@@ -24,8 +24,7 @@ class DefaultConfig(object):
     lr_decay = 0.95
 
     trajectory_length = 300
-    predicting = {'x_0': 1.0, 'delta': 0.1, 'alpha': 0.3225, 'mission': "single-trajectory",
-                  'truth_path': "dataset/trajectory.pkl"}
+    state = {'x_0': 1.0, 'delta': 0.1, 'alpha': 0.3225}
 
 
 def parse(self, kwargs):

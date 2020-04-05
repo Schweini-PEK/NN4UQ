@@ -18,11 +18,12 @@ class Visualizer(object):
 
     def plot_many(self, d):
         """
-        :param d: dict (name,value) i.e. ('loss',0.11).
+        :param d: dict (name,value) i.e. ('data',0.11).
         :return:
         """
         for k, v in d.iteritems():
-            self.plot(k, v)
+            # self.plot(n, v)
+            continue
 
     def img_many(self, d):
         for k, v in d.iteritems():
@@ -30,7 +31,7 @@ class Visualizer(object):
 
     def plot(self, win, name, y, x=None, **kwargs):
         """
-        self.plot('loss',1.00)
+        self.plot('data',1.00)
         """
         rookie = False
         if isinstance(x, type(None)):
@@ -64,7 +65,7 @@ class Visualizer(object):
                         )
 
     def log(self, info, win='log_text'):
-        """self.log({'loss':1,'lr':0.0001})
+        """self.log({'data':1,'lr':0.0001})
 
 
         :param info:

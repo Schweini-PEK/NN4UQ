@@ -1,3 +1,4 @@
+import collections
 import inspect
 import pickle
 import time
@@ -5,16 +6,14 @@ import warnings
 
 import numpy as np
 import torch
-from ray import tune
-from sklearn.model_selection import GridSearchCV
-from skorch import NeuralNetRegressor
+from sklearn.model_selection import ParameterGrid
 from torch import nn, optim
-from torch.utils.data import DataLoader
 from torchnet import meter
 
 import dataset
 import models
 import utils
+import utils.experiment_analysis
 from config import config
 
 warnings.filterwarnings('ignore')
@@ -33,69 +32,45 @@ def generate(**kwargs):
         pickle.dump(training_data, f)
 
 
-def grid_train(**kwargs):
-    config.parse(kwargs)
-
-    data = dataset.loader.LoadDataset(math_model=config.math_model, size=config.n_data)
-    net = NeuralNetRegressor(models.MLP, max_epochs=config.max_epoch, lr=config.lr, verbose=1)
-    n_features = len(data.ode_frame[0][0])
-    x, y = utils.kits.list2sample(n_features, data.ode_frame)
-    x = torch.tensor(x)
-    y = torch.tensor(y)
-
-    params = {'lr': [0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.3],
-              'max_epochs': list(range(1000, 2200, 200))}
-
-    gs = GridSearchCV(net, params, scoring='neg_mean_absolute_error',
-                      verbose=1, cv=5, n_jobs=4)
-
-    gs.fit(x.float(), y.float())
-    gs.get_params()
-    # print("my gs: ", gs.best_score_, gs.best_params_)
-
-    utils.kits.print_best_score(gs, params)
-
-
-# def general(**kwargs):
-def general(search_space):
-    # config.parse(kwargs)
-    # viz = utils.Visualizer()
-    # win = inspect.currentframe().f_code.co_name + '@' + time.strftime("%H:%M:%S", time.localtime())
-
+def general(grids):
     use_cuda = config.use_gpu and torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
-    model = getattr(models, search_space['model'])().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=search_space['lr'])
-
-    data = dataset.loader.LoadDataset(math_model=config.math_model, size=config.n_data,
-                                      base=config.base)
+    print(device)
+    data = dataset.loader.LoadDataset(math_model=config.math_model, size=config.n_data)
     train_loader, test_loader = utils.kits.get_data_loaders(data, config.train_ratio,
                                                             config.batch_size, config.num_workers)
-    func = config.func
-    if func == "train":
-        print(search_space['max_epoch'])
-        for i in range(search_space['max_epoch']):
-            train(model, optimizer, train_loader, device)
-            acc = val(model, test_loader, device)
-            tune.track.log(mean_accuracy=acc)
 
-            # if config.visible:
-            #     if (i + 1) % config.print_freq == 0:
-            #         viz.plot(win=win, name='loss', y=loss[-1])
+    analyst = utils.experiment_analysis.Analysis(grids[0])
 
-            if (i + 1) % 500 == 0:
-                model.save()
+    for grid in grids:
+        t0 = time.time()
+        model = getattr(models, grid['model'])().to(device)
+        optimizer = optim.Adam(model.parameters(), lr=grid['lr'])
 
-    elif func == "predict":
-        # predict(model, config, viz)
-        pass
+        train_loss_list, val_loss_list = [], []
+        for i in range(grid['max_epoch']):
+            train_loss = train(model, optimizer, train_loader, device)
+            train_loss_list.append(train_loss)
+
+            if (i + 1) % 5 == 0:
+                val_loss = val(model, test_loader, device)
+                val_loss_list.append(val_loss)
+
+        t = time.time() - t0
+        checkpoint = model.save()
+        data = {'train_loss': train_loss_list, 'val_loss': val_loss_list,
+                'ckpt': checkpoint, 'time': t}
+        analyst.record(grid, data)
+
+    analyst.save()
+    return analyst
 
 
 def train(model, optimizer, train_loader, device=torch.device('cpu')):
     model.train()
 
-    criterion = nn.L1Loss()
     loss_meter = meter.AverageValueMeter()
+    criterion = nn.L1Loss()
 
     for d in train_loader:
         optimizer.zero_grad()
@@ -105,85 +80,79 @@ def train(model, optimizer, train_loader, device=torch.device('cpu')):
         out = model(x.float())
         loss = criterion(out, y.unsqueeze(1).float())
         loss.backward()  # get gradients to parameters
+        loss_meter.add(loss.data.cpu())
         optimizer.step()  # update parameters
-        loss_meter.add(loss.data)
+
     return loss_meter.value()[0]
 
 
-def val(model, data_loader: DataLoader, device=torch.device('cpu')):
+def val(model, val_loader, device=torch.device('cpu')):
     model.eval()
 
     loss_meter = meter.AverageValueMeter()
     criterion = nn.MSELoss()
 
     with torch.no_grad():
-        for d in data_loader:
+        for d in val_loader:
             x, y = d
             x, y = x.to(device), y.to(device)
 
             out = model(x.float())
             loss = criterion(out, y.unsqueeze(1).float())
-            loss_meter.add(loss.data)
+            loss_meter.add(loss.data.cpu())
 
     return loss_meter.value()[0]
 
 
-def ray_train(**kwargs):
+def tune_train(**kwargs):
     config.parse(kwargs)
-    search_space = {
-        'lr': tune.choice([0.001, 0.01, 0.1, 0.2, 0.3]),
-        'max_epoch': tune.choice([100, 500, 1000, 2000]),
-        'model': tune.choice(['MLP'])
-    }
-    resource = None
-    if config.use_gpu and torch.cuda.is_available():
-        resource = {'gpu': 1}
-        print("using GPU")
-    analysis = tune.run(general, resources_per_trial=resource, config=search_space)
-    df = analysis.dataframe()
+    params = {'model': ['MLP', 'resnet', 'ShallowResBN', 'rs_resnet'],
+              'lr': [0.05, 0.1, 0.2],
+              'max_epoch': [1000]}
 
-    dfs = analysis.trial_dataframes
-    ax = None
-    print(len(dfs.values()))
-    for d in dfs.values():
-        print('D: ', d)
-        ax = d.mean_accuracy.plot(ax=ax, legend=False)
+    params = collections.OrderedDict(sorted(params.items()))
+    grids = list(ParameterGrid(params))
 
-    # logdir = analysis.get_best_logdir("mean_accuracy", mode="max")
-    # model = torch.load(os.path.join(logdir, "model.pth"))
-    # print(model.parameters())
+    analyst = general(grids)
 
 
-def predict(model, cfg, viz: utils.Visualizer):
+def plotter():
+    path = 'results/' + config.load_result_path + '.csv'
+    analyst = utils.experiment_analysis.Analysis(pretrained=True, path=path)
+    viz = utils.Visualizer()
+    analyst.plot(viz)
+    analyst.predict(viz, config.state, test)
+
+
+def test(model, state, viz, truth_path="dataset/trajectory.pkl"):
     model.eval()
-    length = cfg.trajectory_length
     t = 0.0
-    state = cfg.predicting
-    if state['mission'] == "single-trajectory":
-        x_solver = x_0 = state.get('x_0', 1.0)
-        delta = state.get('delta', 0.1)
-        alpha = state.get('alpha')
-        x_model = torch.tensor([x_0, alpha, delta])
-        win = inspect.currentframe().f_code.co_name + '@' + time.strftime("%H:%M:%S", time.localtime())
+    length = state.get('length', 300)
+    x_solver = x_0 = state.get('x_0', 1.0)
+    delta = state.get('delta', 0.1)
+    alpha = state.get('alpha')
+    x_model = torch.tensor([x_0, alpha, delta])
+    win = inspect.currentframe().f_code.co_name + '@' + time.strftime("%H:%M:%S", time.localtime())
 
-        viz.plot(win=win, name='model', y=float(x_model[0]), x=t)
-        viz.plot(win=win, name='solver', y=x_solver, x=t)
-        with torch.no_grad():
-            for i in range(length):
-                t += delta
-                x_model[0] = model(x_model.float())
-                x_solver = utils.ode.ode_predictor(x_solver, alpha, delta)
-                viz.plot(win=win, name='model', y=float(x_model[0]), x=t)
-                viz.plot(win=win, name='solver', y=x_solver, x=t)
-        try:
-            with open(state.get('truth_path'), 'rb') as f:
-                x_truth = pickle.load(f)
-                timeline = np.arange(len(x_truth)) * delta
-                viz.plot(win=win, name='truth', y=x_truth, x=timeline)
-        except FileNotFoundError:
-            print('No ground truth available.')
+    viz.plot(win=win, name='model', y=float(x_model[0]), x=t)
+    viz.plot(win=win, name='solver', y=x_solver, x=t)
+    with torch.no_grad():
+        for i in range(length):
+            t += delta
+            x_model[0] = model(x_model.float())
+            x_solver = utils.ode.ode_predictor(x_solver, alpha, delta)
+            viz.plot(win=win, name='model', y=float(x_model[0]), x=t)
+            viz.plot(win=win, name='solver', y=x_solver, x=t)
+    try:
+        with open(state.get('truth_path'), 'rb') as f:
+            x_truth = pickle.load(f)
+            timeline = np.arange(len(x_truth)) * delta
+            viz.plot(win=win, name='truth', y=x_truth, x=timeline)
+    except FileNotFoundError:
+        print('No ground truth available.')
 
 
 if __name__ == '__main__':
     import fire
+
     fire.Fire()

@@ -49,7 +49,7 @@ def k_fold_index_gen(idx, k=5):
             data_val_loader = DataLoader(val_set, batch_size=config.batch_size, num_workers=config.num_workers)
         else:
             indices = idx(range(len(data)))
-            milestone = utils.kfold.k_fold_index_gen(indices, k=config.k_fold)
+            milestone = utils.kfold.k_fold_index_gen(indices, n=config.k_fold)
             train_indices = indices[:milestone[fold]] + indices[milestone[fold + 1]:]
             val_indices = indices[milestone[fold]:milestone[fold + 1]]
             train_sampler = SubsetRandomSampler(train_indices)
