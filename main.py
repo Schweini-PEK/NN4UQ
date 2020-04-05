@@ -43,7 +43,7 @@ def general(grids):
     analyst = utils.experiment_analysis.Analysis(grids[0])
 
     for grid in grids:
-        t0 = time.time()
+        t = t0 = time.time()
         model = getattr(models, grid['model'])().to(device)
         optimizer = optim.Adam(model.parameters(), lr=grid['lr'])
 
@@ -55,6 +55,10 @@ def general(grids):
             if (i + 1) % 5 == 0:
                 val_loss = val(model, test_loader, device)
                 val_loss_list.append(val_loss)
+
+            if (i + 1) % 50 == 0:
+                t = time.time() - t
+                print('{i} epoch with {time}s'.format(i=i + 1, time=t))
 
         t = time.time() - t0
         checkpoint = model.save()
@@ -108,7 +112,7 @@ def tune_train(**kwargs):
     config.parse(kwargs)
     params = {'model': ['MLP', 'resnet', 'ShallowResBN', 'rs_resnet'],
               'lr': [0.05, 0.1, 0.2],
-              'max_epoch': [1000]}
+              'max_epoch': [50]}
 
     params = collections.OrderedDict(sorted(params.items()))
     grids = list(ParameterGrid(params))
