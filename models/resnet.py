@@ -4,28 +4,35 @@ from .basicmodule import BasicModule
 
 
 class BasicBlock(BasicModule):
-    def __init__(self, in_dim, n_hidden, out_dim=1):
+    def __init__(self, in_dim, n_hidden, out_dim=1, dropout=False):
         super(BasicBlock, self).__init__()
+        self.dropout = dropout
         self.layer1 = nn.Sequential(nn.Linear(in_dim, n_hidden), nn.Tanh())
         self.layer2 = nn.Sequential(nn.Linear(n_hidden, n_hidden), nn.Tanh())
         self.layer3 = nn.Sequential(nn.Linear(n_hidden, n_hidden), nn.Tanh())
+        # self.layer4 = nn.Sequential(nn.Linear(n_hidden, out_dim), nn.Dropout(p=0.5))
         self.layer4 = nn.Sequential(nn.Linear(n_hidden, out_dim))
+        self.layer5 = nn.Dropout(p=0.5)
 
     def forward(self, x):
         identity = x
-
         x1 = self.layer1(x)
         x2 = self.layer2(x1)
         x3 = self.layer3(x2)
         out = self.layer4(x3)
+        if self.dropout:
+            out = self.layer5(out)
 
-        out += identity[:, 0].view(identity.size()[0], 1)
+        if len(identity.size()) == 1:
+            out += identity[0]
+        else:
+            out += identity[:, 0].view(identity.size()[0], 1)
 
         return out
 
 
 class ResNet(BasicModule):
-    def __init__(self, block, in_dim, n_hidden, k, out_dim=1):
+    def __init__(self, block=BasicBlock, in_dim=3, n_hidden=30, k=1, out_dim=1):
         super(ResNet, self).__init__()
         self.k = k
         self.in_dim = in_dim
@@ -45,21 +52,6 @@ class ResNet(BasicModule):
         return x
 
 
-def _resnet(block, in_dim, n_hidden, k):
-    model = ResNet(block, in_dim, n_hidden, k)
-    return model
-
-
-def resnet(in_dim=3, n_hidden=30):
-    model = _resnet(BasicBlock, in_dim, n_hidden, k=1)
-    return model
-
-
-def rs_resnet(in_dim=3, n_hidden=20, k=3):
-    model = _resnet(BasicBlock, in_dim, n_hidden, k)
-    return model
-
-
-def rt_resnet(in_dim=3, n_hidden=20, k=3):
-    model = _resnet(BasicBlock, in_dim, n_hidden, k=1)
-    return model
+class RSResNet(ResNet):
+    def __init__(self, in_dim=3, n_hidden=20, k=3, out_dim=1):
+        super().__init__(BasicBlock, in_dim, n_hidden, k, out_dim)

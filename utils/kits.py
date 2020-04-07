@@ -1,4 +1,5 @@
 import numpy as np
+from torch import nn
 from torch.utils.data import DataLoader, random_split
 
 
@@ -29,6 +30,10 @@ def print_best_score(gs, param_test):
         print("\t%s: %r" % (param_name, best_parameters[param_name]))
 
 
+def str2list(s: str):
+    return np.array(s[1:-1].split(',')).astype(np.float)
+
+
 def get_data_loaders(data, ratio, batch_size, num_workers):
     train_size = int(len(data) * ratio)
     val_size = len(data) - train_size
@@ -36,6 +41,12 @@ def get_data_loaders(data, ratio, batch_size, num_workers):
     data_train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=num_workers)
     data_val_loader = DataLoader(val_set, batch_size=batch_size, num_workers=num_workers)
     return data_train_loader, data_val_loader
+
+
+def apply_dropout(m):
+    if type(m) == nn.Dropout:
+        print('FOUND')
+        m.train()
 
 
 def k_fold_index_gen(idx, k=5):
