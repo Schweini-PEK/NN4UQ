@@ -73,4 +73,4 @@ class Analysis:
         for _, grid in df.iterrows():
             model = getattr(models, grid['model'])()
             model.load(grid['ckpt'])
-            func(model, state, viz, win='NO' + grid['name'], dropout=dp)
+            func(model, state, viz, win=grid['name'], dropout=dp)
