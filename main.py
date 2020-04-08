@@ -110,10 +110,10 @@ def val(model, val_loader, device=torch.device('cpu')):
 
 def tune_train(**kwargs):
     config.parse(kwargs)
-    params = {'model': ['ResNet'],
-              'lr': [0.05, 0.1, 0.2],
+    params = {'model': ['RSResNet'],
+              'lr': [0.065],
               'epoch': [600],
-              'bs': [4, 8]}
+              'bs': [8]}  # Batch Size
 
     params = collections.OrderedDict(sorted(params.items()))
     grids = list(ParameterGrid(params))
