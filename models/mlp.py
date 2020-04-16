@@ -9,17 +9,16 @@ class MLP(BasicModule):
 
     """
 
-    def __init__(self, in_dim=3, n_hidden_1=40, n_hidden_2=40, n_hidden_3=40, out_dim=1):
+    def __init__(self, in_dim=3, n_hidden=40, out_dim=1):
         super(MLP, self).__init__()
-        self.layer1 = nn.Sequential(nn.Linear(in_dim, n_hidden_1), swish.Swish())
+        self.layer1 = nn.Sequential(nn.Linear(in_dim, n_hidden), swish.Swish())
         # The activation function of the 2nd layer is replaced by Swish.
-        self.layer2 = nn.Sequential(nn.Linear(n_hidden_1, n_hidden_2), swish.Swish())
-        self.layer3 = nn.Sequential(nn.Linear(n_hidden_2, n_hidden_3), swish.Swish())
-        self.layer4 = nn.Sequential(nn.Linear(n_hidden_3, out_dim))
+        self.layer2 = nn.Sequential(nn.Linear(n_hidden, n_hidden), swish.Swish())
+        self.layer3 = nn.Sequential(nn.Linear(n_hidden, n_hidden), swish.Swish())
+        self.layer4 = nn.Sequential(nn.Linear(n_hidden, out_dim))
 
     def forward(self, x):
         x1 = self.layer1(x)
-        print("x", x1)
 
         x2 = self.layer2(x1)
         x3 = self.layer3(x2)
@@ -32,17 +31,17 @@ class ShallowResBN(BasicModule):
 
     """
 
-    def __init__(self, in_dim=3, n_hidden_1=40, n_hidden_2=40, out_dim=1):
+    def __init__(self, in_dim=3, n_hidden=40, out_dim=1):
         super(ShallowResBN, self).__init__()
-        self.layer1 = nn.Linear(in_dim, n_hidden_1)
-        self.bn1 = nn.BatchNorm1d(n_hidden_1)
+        self.layer1 = nn.Linear(in_dim, n_hidden)
+        self.bn1 = nn.BatchNorm1d(n_hidden)
         self.swish1 = swish.Swish()
         self.drop_layer1 = nn.Dropout(p=0.3)
-        self.layer2 = nn.Linear(n_hidden_1, n_hidden_2)
-        self.bn2 = nn.BatchNorm1d(n_hidden_2)
+        self.layer2 = nn.Linear(n_hidden, n_hidden)
+        self.bn2 = nn.BatchNorm1d(n_hidden)
         self.swish2 = swish.Swish()
         self.drop_layer2 = nn.Dropout(p=0.3)
-        self.layer3 = nn.Linear(n_hidden_2, out_dim)
+        self.layer3 = nn.Linear(n_hidden, out_dim)
 
     def forward(self, x):
         if len(x.size()) == 1:

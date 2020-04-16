@@ -1,6 +1,9 @@
+"""
+Here are some kits I used to simplify the main program.
+"""
+
 import numpy as np
 from torch import nn
-from torch.utils.data import DataLoader, random_split
 
 
 def list2sample(n_features, dataset):
@@ -22,52 +25,44 @@ def list2sample(n_features, dataset):
     return sample_x, sample_y
 
 
-def print_best_score(gs, param_test):
-    print("Best score: %0.3f" % gs.best_score_)
-    print("Best parameters set:")
-    best_parameters = gs.get_params()
-    for param_name in sorted(param_test.keys()):
-        print("\t%s: %r" % (param_name, best_parameters[param_name]))
-
-
 def str2list(s: str):
     return np.array(s[1:-1].split(',')).astype(np.float)
 
 
-def get_data_loaders(data, ratio, batch_size, num_workers):
-    train_size = int(len(data) * ratio)
-    val_size = len(data) - train_size
-    train_set, val_set = random_split(data, [train_size, val_size])
-    data_train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=num_workers)
-    data_val_loader = DataLoader(val_set, batch_size=batch_size, num_workers=num_workers)
-    return data_train_loader, data_val_loader
-
-
 def apply_dropout(m):
     if type(m) == nn.Dropout:
-        print('FOUND')
         m.train()
+
+
+def print_variable(func):
+    config_list = []
+    for k in vars(func):
+        # if not k.startswith('__'):
+        #     config_list.append('{}: {}'.format(k, vars(func).get(k)))
+        config_list.append('{}: {}'.format(k, vars(func).get(k)))
+
+    return config_list
 
 
 def k_fold_index_gen(idx, k=5):
     """
         for fold in range(config.k_fold):
         if config.k_fold == 1:  # when k_fold is not just ONE FOLD.
-            train_size = int(len(data) * config.train_ratio)
-            val_size = len(data) - train_size
-            train_set, val_set = random_split(data, [train_size, val_size])
+            train_size = int(len(record) * config.train_ratio)
+            val_size = len(record) - train_size
+            train_set, val_set = random_split(record, [train_size, val_size])
             data_train_loader = DataLoader(train_set, batch_size=config.batch_size, num_workers=config.num_workers)
             data_val_loader = DataLoader(val_set, batch_size=config.batch_size, num_workers=config.num_workers)
         else:
-            indices = idx(range(len(data)))
+            indices = idx(range(len(record)))
             milestone = utils.kfold.k_fold_index_gen(indices, n=config.k_fold)
             train_indices = indices[:milestone[fold]] + indices[milestone[fold + 1]:]
             val_indices = indices[milestone[fold]:milestone[fold + 1]]
             train_sampler = SubsetRandomSampler(train_indices)
             val_sampler = SubsetRandomSampler(val_indices)
-            data_train_loader = DataLoader(data, batch_size=config.batch_size,
+            data_train_loader = DataLoader(record, batch_size=config.batch_size,
                                            num_workers=config.num_workers, sampler=train_sampler)
-            data_val_loader = DataLoader(data, batch_size=config.batch_size,
+            data_val_loader = DataLoader(record, batch_size=config.batch_size,
                                          num_workers=config.num_workers, sampler=val_sampler)
     :param idx:
     :param k:

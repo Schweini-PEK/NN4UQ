@@ -50,3 +50,13 @@ def multi_ode_predictor(x0, a, delta):
     # xs = ode_sol.y
     # return xs.transpose()[-1, 0]
     return np.dot(expm(delta * a), x0)
+
+
+class ODEState:
+    def __init__(self, n_x, n_alpha, delta=1):
+        self.n_x = n_x
+        self.n_alpha = n_alpha
+        self.delta = delta
+
+    def check_length(self, length):
+        return length == (self.n_x + self.n_alpha + self.delta)
