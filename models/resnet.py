@@ -1,16 +1,17 @@
+import torch
 from torch import nn
 
 from utils import swish
 from .basicmodule import BasicModule
 
 
-class BasicBlock(BasicModule):
+class BasicResBlock(BasicModule):
     def __init__(self, in_dim, n_hidden, out_dim=1):
-        super(BasicBlock, self).__init__()
+        super(BasicResBlock, self).__init__()
         self.layer1 = nn.Sequential(nn.Linear(in_dim, n_hidden), swish.Swish())
         self.layer2 = nn.Sequential(nn.Linear(n_hidden, n_hidden), nn.Tanh())
         self.layer3 = nn.Sequential(nn.Linear(n_hidden, n_hidden), nn.Tanh())
-        # self.layer4 = nn.Sequential(nn.Linear(n_hidden, out_dim), nn.Dropout(p=0.5))
+        # self.layer4 = nn.Sequential(nn.Linear(h_dim, out_dim), nn.Dropout(p=0.5))
         self.layer4 = nn.Dropout(p=0.5)
         self.layer5 = nn.Sequential(nn.Linear(n_hidden, out_dim))
 
@@ -31,14 +32,14 @@ class BasicBlock(BasicModule):
 
 
 class ResNet(BasicModule):
-    def __init__(self, block=BasicBlock, in_dim=3, n_hidden=30, out_dim=1):
+    def __init__(self, block=BasicResBlock, in_dim=3, n_hidden=30, out_dim=1):
         super(ResNet, self).__init__()
         self.in_dim = in_dim
-        self.n_hidden = n_hidden
+        self.h_dim = n_hidden
         self.layer = self._make_layer(block, out_dim)
 
     def _make_layer(self, block, out_dim):
-        layers = [block(self.in_dim, self.n_hidden, out_dim)]
+        layers = [block(self.in_dim, self.h_dim, out_dim)]
         return nn.Sequential(*layers)
 
     def forward(self, x):
@@ -47,22 +48,47 @@ class ResNet(BasicModule):
 
 
 class RSResNet(BasicModule):
-    def __init__(self, block=BasicBlock, in_dim=3, n_hidden=20, k=3, out_dim=1):
-        # super().__init__(BasicBlock, in_dim, n_hidden, k, out_dim)
+    def __init__(self, block=BasicResBlock, in_dim=3, h_dim=20, k=3, out_dim=1):
         super(RSResNet, self).__init__()
         self.k = k
         self.in_dim = in_dim
-        self.n_hidden = n_hidden
-        self.layer = self._make_layer(block, k, out_dim)
+        self.h_dim = h_dim
+        self.out_dim = out_dim
+        self.layer = self._make_layer(block)
 
-    def _make_layer(self, block, k, out_dim):
-        layers = [block(self.in_dim, self.n_hidden)]
-        self.in_dim = out_dim
-        for _ in range(1, k):
-            layers.append(block(self.in_dim, self.n_hidden))
+    def _make_layer(self, block):
+        layers = [block(self.in_dim, self.h_dim)]
+        self.in_dim = self.out_dim
+        for _ in range(1, self.k):
+            layers.append(block(self.in_dim, self.h_dim))
 
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        return self.layer(x)
+
+
+class RTResNet(BasicModule):
+    def __init__(self, block=BasicResBlock, in_dim=3, h_dim=20, k=3, out_dim=1):
+        super().__init__()
+        self.k = k
+        self.in_dim = in_dim
+        self.h_dim = h_dim
+        self.out_dim = out_dim
+        self.layer = self._make_layer(block)
+
+    def _make_layer(self, block):
+        layers = [block(self.in_dim, self.h_dim)]
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        if len(x.size()) == 1:
+            identity = x[self.in_dim:]
+        else:
+            identity = x[:, self.in_dim:]
+
         x = self.layer(x)
+        for i in range(1, self.k):
+            x = torch.cat((identity, x), 1)
+            x = self.layer(x)
         return x

@@ -7,6 +7,7 @@ import pandas as pd
 
 import models
 import utils
+from config import config
 
 
 class Analysis:
@@ -123,8 +124,7 @@ class Analysis:
         df = self._get_best_trials(n, idx) if use_best else self.df
 
         for _, grid in df.iterrows():
-            if grid['model'] == 'RSResNet':
-                from config import config
+            if grid['model'] == 'RSResNet' or 'RTResNet':
                 model = getattr(models, grid['model'])(in_dim=in_dim, out_dim=out_dim, k=config.k)
             else:
                 model = getattr(models, grid['model'])(in_dim=in_dim, out_dim=out_dim)

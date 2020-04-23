@@ -5,7 +5,7 @@
 To use tune train, run:
 !python main.py tune_train
 
-The configures in config.py could be changed temporarily with commands in the following way:
+The configures in grid.py could be changed temporarily with commands in the following way:
 !python main.py tune_train
 
 To load data from .csv:
@@ -16,29 +16,37 @@ data = data_generator.load_from_csv(x_path='dataset/X.csv', y_path='dataset/Y.cs
 
 import collections
 import logging
+import os
+import pickle
 import time
 
 import numpy as np
 import torch
 import visdom
 from sklearn.model_selection import ParameterGrid
-from torch import nn, optim
-from torchnet import meter
+from torch import optim
 
 import models
 import utils
 import utils.experiment_analysis
 from config import config
+from uq_toy import train, val, test
+from utils.data import generator
 from utils.data import loader
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(module)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
-def trainable(grids, data=None):
+def get_data():
+    g = generator.Generator()
+    g.load_from_csv(x_path='/Users/schweini/Downloads/y_1.csv',
+                    name='tra_reactor')
+
+
+def trainable(grids):
     # GPU
-    use_cuda = config.use_gpu and torch.cuda.is_available()
-    device = torch.device("cuda" if use_cuda else "cpu")
+    device = torch.device("cuda" if config.use_gpu and torch.cuda.is_available() else "cpu")
     logger.info('Using {}'.format(device))
 
     # Initialize analyst
@@ -48,23 +56,23 @@ def trainable(grids, data=None):
 
     # Go through every grid
     for grid in grids:
-        config.parse(grid)  # Update grid into config
-        logger.info('Using config: {}'.format(grid))
+        config.parse(grid)  # Update grid into grid
+        logger.info('Using grid: {}'.format(grid))
 
         data = utils.data.loader.LoadDataset(path=config.dp, sample_freq=config.sf)
         in_dim, out_dim = len(data[0][0]), len(data[0][1])
         logger.info('The input and output dimensions of models are {}, {}'.format(in_dim, out_dim))
         train_loader, test_loader = utils.data.loader.get_data_loaders(data, config.bs,
-                                                                       config.train_ratio, num_workers=4)
+                                                                       config.ratio, num_workers=4)
 
-        if config.model == 'RSResNet':
-            model = models.RSResNet(in_dim=in_dim, out_dim=out_dim, k=config.k).to(device)
+        if config.model == 'RSResNet' or 'RTResNet':
+            model = getattr(models, config.model)(in_dim=in_dim, out_dim=out_dim, k=config.k).to(device)
         else:
             # If you want to tune the number of nodes in hidden layers, here is an easier way to do so.
-            # model = getattr(models, config.model)(in_dim=in_dim, n_hidden=config.nh out_dim=out_dim).to(device)
             model = getattr(models, config.model)(in_dim=in_dim, out_dim=out_dim).to(device)
         for param_tensor in model.state_dict():
             print(param_tensor, "\t", model.state_dict()[param_tensor].size())
+
         optimizer = optim.SGD(model.parameters(), lr=config.lr)
 
         train_loss_list, val_loss_list = [], []
@@ -91,57 +99,18 @@ def trainable(grids, data=None):
     return analyst
 
 
-def train(model, optimizer, train_loader, device=torch.device('cpu')):
-    model.train()
-
-    loss_meter = meter.AverageValueMeter()
-    criterion = nn.MSELoss()
-
-    for d in train_loader:
-        optimizer.zero_grad()
-        x, y = d
-        x, y = x.to(device), y.to(device)
-
-        out = model(x.float())
-        loss = criterion(out, y.float())
-        loss.backward()  # get gradients to parameters
-        loss_meter.add(loss.data.cpu())
-        optimizer.step()  # update parameters
-
-    return float(loss_meter.value()[0])
-
-
-def val(model, val_loader, device=torch.device('cpu')):
-    model.eval()
-
-    loss_meter = meter.AverageValueMeter()
-    criterion = nn.MSELoss()
-
-    with torch.no_grad():
-        for d in val_loader:
-            x, y = d
-            x, y = x.to(device), y.to(device)
-
-            out = model(x.float())
-            loss = criterion(out, y.float())
-            loss_meter.add(loss.data.cpu())
-
-    return float(loss_meter.value()[0])
-
-
 def tune_train(**kwargs):
     config.parse(kwargs)
     # Change the things here for the hyperparameter tuning.
     # Some other parts are also available to change.
     # i.e., to use different data in a single experiments, simply add:
     # 'dp': ['dataset/you_name_it', ...]
-    # The name has to be the same with those in config.py
+    # The name has to be the same with those in grid.py
     # params = {'model': ['RSResNet'],  # The name of the model.
-    params = {'model': ['RSResNet'],  # The name of the model.
-              'lr': [0.03],
-              'epoch': [140],
-              'bs': [4],
-              'sf': [100, 60, 10]
+    params = {'model': ['RTResNet'],  # The name of the model.
+              'lr': [0.1],
+              'epoch': [10],
+              'bs': [17],
               }  # Batch Size
 
     params = collections.OrderedDict(sorted(params.items()))
@@ -158,7 +127,7 @@ def plotter():
 
     :return:
     """
-    load_result_path = 'results/0416_01:55.csv'
+    load_result_path = 'results/'
     analyst = utils.experiment_analysis.Analysis(pretrained=True, path=load_result_path)
     viz = visdom.Visdom()
     analyst.plot_loss(viz)
@@ -167,31 +136,34 @@ def plotter():
     analyst.predict(viz, config.state, test)
 
 
-def test(model, state, viz, win, name, dropout=True):
-    model.eval()
-    if dropout:
-        # Keep the dropout layers working during prediction.
-        # Dropout layers would be automatically turned off by PyTorch.
-        model.apply(utils.kits.apply_dropout)
-
-    t = 0.0
-    length = state.get('length', 300)
-    x_solver = state.get('x_0', 1.0)
+def plot_from_ray():
+    state = config.state
+    viz = visdom.Visdom()
+    length = state.get('length', 200)
     delta = state.get('delta', 0.1)
-    alpha = state.get('alpha', 0.5)
-    x_model = torch.tensor([x_solver, alpha, delta])
-    x_model_list = np.array([x_model[0]])
-    x_solver_list = np.array([x_solver])
+    win = '1'
+    timeline = np.arange(0, length) * delta
 
-    with torch.no_grad():
-        for i in range(length):
-            t += delta
-            x_model[0] = model(x_model.float())
-            x_solver = utils.ode.ode_predictor(x_solver, alpha, delta)
-            x_model_list = np.append(x_model_list, x_model[0])
-            x_solver_list = np.append(x_solver_list, x_solver)
-        timeline = np.arange(0, length + 1) * delta
-        viz.line(X=timeline, Y=x_model_list, name=name, win=win, update='insert')
+    truth_path = 'dataset/tra_reactor.pkl'
+
+    try:
+        with open(truth_path, 'rb') as f:
+            x_truth = np.array(pickle.load(f)).flatten().astype(np.float)
+            viz.line(X=timeline, Y=x_truth,
+                     win=win, name='truth',
+                     opts=dict(title='reactor', legend=['truth'], showlegend=True))
+    except FileNotFoundError:
+        logging.warning('No ground truth available at {}.'.format(truth_path))
+
+    root = '/Users/schweini/ray_results/question'
+    # root = '/Users/schweini/ray_results/print'
+    subs = [f.path for f in os.scandir(root) if f.is_dir()]
+    for x in subs:
+        path = x + '/model.pth'
+        name = x[x.find('bs') + 3:x.find('bs') + 6] + '&' + x[x.find('lr') + 3:x.find('lr') + 11]
+        model = models.ResNet(in_dim=6)
+        model.load(path)
+        test(model, state, viz, win=win, name=name, dropout=False)
 
 
 if __name__ == '__main__':

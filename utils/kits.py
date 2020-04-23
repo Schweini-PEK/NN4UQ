@@ -46,24 +46,24 @@ def print_variable(func):
 
 def k_fold_index_gen(idx, k=5):
     """
-        for fold in range(config.k_fold):
-        if config.k_fold == 1:  # when k_fold is not just ONE FOLD.
-            train_size = int(len(record) * config.train_ratio)
+        for fold in range(grid.k_fold):
+        if grid.k_fold == 1:  # when k_fold is not just ONE FOLD.
+            train_size = int(len(record) * grid.train_ratio)
             val_size = len(record) - train_size
             train_set, val_set = random_split(record, [train_size, val_size])
-            data_train_loader = DataLoader(train_set, batch_size=config.batch_size, num_workers=config.num_workers)
-            data_val_loader = DataLoader(val_set, batch_size=config.batch_size, num_workers=config.num_workers)
+            data_train_loader = DataLoader(train_set, batch_size=grid.batch_size, num_workers=grid.num_workers)
+            data_val_loader = DataLoader(val_set, batch_size=grid.batch_size, num_workers=grid.num_workers)
         else:
             indices = idx(range(len(record)))
-            milestone = utils.kfold.k_fold_index_gen(indices, n=config.k_fold)
+            milestone = utils.kfold.k_fold_index_gen(indices, n=grid.k_fold)
             train_indices = indices[:milestone[fold]] + indices[milestone[fold + 1]:]
             val_indices = indices[milestone[fold]:milestone[fold + 1]]
             train_sampler = SubsetRandomSampler(train_indices)
             val_sampler = SubsetRandomSampler(val_indices)
-            data_train_loader = DataLoader(record, batch_size=config.batch_size,
-                                           num_workers=config.num_workers, sampler=train_sampler)
-            data_val_loader = DataLoader(record, batch_size=config.batch_size,
-                                         num_workers=config.num_workers, sampler=val_sampler)
+            data_train_loader = DataLoader(record, batch_size=grid.batch_size,
+                                           num_workers=grid.num_workers, sampler=train_sampler)
+            data_val_loader = DataLoader(record, batch_size=grid.batch_size,
+                                         num_workers=grid.num_workers, sampler=val_sampler)
     :param idx:
     :param k:
     :return:

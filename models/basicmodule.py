@@ -20,16 +20,23 @@ class BasicModule(torch.nn.Module):
         """
         self.load_state_dict(torch.load(path))
 
-    def save(self, name=None, folder=None):
+    def save(self, name=None, folder=None, path=None):
         """Save a model with a concatenation of the model's name and current time.
 
         :param folder: Saving to a specific folder.
         :param name: The name of the model.
         :return: The name of the model that saved.
         """
-        base = 'checkpoints/' + folder
-        if name is None:
-            prefix = base + self.model_name + '_'
-            name = time.strftime(prefix + '%H:%M.pth')
-        torch.save(self.state_dict(), name)
-        return name
+        if name is None and folder is not None:
+            prefix = 'checkpoints/' + folder + self.model_name + '_'
+            name = time.strftime(prefix + '%h_dim:%M.pth')
+        if path:
+            torch.save(self.state_dict(), path)
+            print('Save at path: ', path)
+            return path
+        else:
+            torch.save(self.state_dict(), name)
+            return name
+
+    def load_tune(self, path):
+        return torch.load(path)

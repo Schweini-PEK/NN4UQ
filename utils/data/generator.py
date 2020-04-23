@@ -61,7 +61,7 @@ def mlode_generating(train_size):
 def _save(data, path):
     with open(path, 'wb') as f:
         pickle.dump(data, f)
-        logger.info('{} record have been generated and saved at {}.'.format(len(data), path))
+        logger.info('{} samples have been generated and saved at {}.'.format(len(data), path))
 
 
 class Generator:
@@ -77,9 +77,10 @@ class Generator:
         except FileExistsError as e:
             logger.info('{}: Folder {} already exists.'.format(e, self.folder))
 
-    def generate(self, n_data, name=None, shuffle=True, method='lsode_generating', save=True):
+    def generate(self, n_data, name=None, shuffle=False, method='lsode_generating', save=True):
         """
 
+        :param save:
         :param shuffle: If shuffle.
         :param name: Name the file that is going to be saved later.
         :param n_data: The number of samples to be generated.
@@ -95,7 +96,7 @@ class Generator:
             _save(data, path)
         return data
 
-    def load_from_csv(self, x_path, name=None, shuffle=True, y_path=None, header=False, save=True):
+    def load_from_csv(self, x_path, name=None, shuffle=False, y_path=None, header=False, save=True):
         """Loading data from csv, with
         generator.load_from_csv(x_path='dataset/X.csv', y_path='dataset/Y.csv')
 
@@ -136,4 +137,6 @@ class Generator:
             random.shuffle(x)
         if save:
             _save(x, path)
+
+        print(x)
         return x
