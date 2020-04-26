@@ -6,12 +6,13 @@ from .basicmodule import BasicModule
 
 
 class BasicResBlock(BasicModule):
-    def __init__(self, in_dim, n_hidden, out_dim=1):
+    def __init__(self, in_dim, n_hidden, out_dim=1, activation='Swish'):
         super(BasicResBlock, self).__init__()
-        self.layer1 = nn.Sequential(nn.Linear(in_dim, n_hidden), swish.Swish())
-        self.layer2 = nn.Sequential(nn.Linear(n_hidden, n_hidden), nn.Tanh())
-        self.layer3 = nn.Sequential(nn.Linear(n_hidden, n_hidden), nn.Tanh())
-        # self.layer4 = nn.Sequential(nn.Linear(h_dim, out_dim), nn.Dropout(p=0.5))
+        self.in_dim = in_dim
+        self.activation = swish.Swish if activation == 'Swish' else getattr(nn, activation)
+        self.layer1 = nn.Sequential(nn.Linear(in_dim, n_hidden), self.activation())
+        self.layer2 = nn.Sequential(nn.Linear(n_hidden, n_hidden), self.activation())
+        self.layer3 = nn.Sequential(nn.Linear(n_hidden, n_hidden), self.activation())
         self.layer4 = nn.Dropout(p=0.5)
         self.layer5 = nn.Sequential(nn.Linear(n_hidden, out_dim))
 
@@ -27,6 +28,7 @@ class BasicResBlock(BasicModule):
             out += identity[0]
         else:
             out += identity[:, 0].view(identity.size()[0], 1)
+            # out += identity[:, :self.in_dim]
 
         return out
 

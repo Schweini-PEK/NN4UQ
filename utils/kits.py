@@ -2,6 +2,8 @@
 Here are some kits I used to simplify the main program.
 """
 
+import csv
+
 import numpy as np
 from torch import nn
 
@@ -42,6 +44,37 @@ def print_variable(func):
         config_list.append('{}: {}'.format(k, vars(func).get(k)))
 
     return config_list
+
+
+def load_trajectory(x_path, y_path):
+    with open(x_path, 'r')as x_all:
+        x_reader = csv.reader(x_all)
+        samples = list(x_reader)
+
+    with open(y_path, 'r')as f_y:
+        reader_y = csv.reader(f_y)
+
+        for row in reader_y:
+            print(row)
+            break
+
+        # Get number of out_dim
+        out_dim = len(next(reader_y))
+        f_y.seek(0)
+        for row in reader_y:
+            print(row)
+            break
+
+    with open(x_path, 'r')as x_all:
+        alphas = set()
+        starter = []
+        count = 0
+        x_reader = csv.reader(x_all)
+        for row in x_reader:
+            alpha = tuple(row[out_dim:])
+            if alpha not in alpha:
+                alphas.add(alpha)
+        return alphas
 
 
 def k_fold_index_gen(idx, k=5):

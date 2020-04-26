@@ -57,7 +57,6 @@ class Analysis:
     def _get_best_trials(self, n, idx='val_loss', method='avg'):
         """Sort the results by some standards. However, still haven't figured out the method.
         The avg of loss on validation set is too low to compare.
-        TODO: Find out a method.
 
         :param n: Select the top n results.
         :param idx: The feature to use.
@@ -104,10 +103,14 @@ class Analysis:
         :return: None
         """
         t = 0.0
-        length = state.get('length', 300)
-        x_solver = state.get('x_0', 1.0)
-        delta = state.get('delta', 0.1)
-        alpha = state.get('alpha')
+        length = 300
+        x_solver = 1.0
+        delta = 0.1
+        alpha = 0.3225
+        # length = state.get('length', 300)
+        # x_solver = state.get('x_0', 1.0)
+        # delta = state.get('delta', 0.1)
+        # alpha = state.get('alpha')
         x_solver_list = np.array([x_solver])
         win = self.name
 

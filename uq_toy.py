@@ -69,7 +69,7 @@ def test(model, state, viz, win, name, dropout=True):
             x_model[0] = model(x_model.float())
             x_model_list = np.append(x_model_list, x_model[0])
         logger.info('{} finished predicting in {}'.format(name, time.time() - start_time))
-        timeline = np.arange(0, length + 1) * 0.1
+        timeline = np.arange(0, length + 1)
         viz.line(X=timeline, Y=x_model_list, name=name, win=win, update='insert')
 
 
