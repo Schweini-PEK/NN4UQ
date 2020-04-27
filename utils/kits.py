@@ -3,9 +3,17 @@ Here are some kits I used to simplify the main program.
 """
 
 import csv
+import random
 
 import numpy as np
+import torch
 from torch import nn
+
+
+def setup_seed(seed):
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
 
 def list2sample(n_features, dataset):

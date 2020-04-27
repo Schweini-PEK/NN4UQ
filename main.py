@@ -62,7 +62,6 @@ def trainable(grids):
         data = utils.data.loader.LoadDataset(path=config.dp, sample_freq=config.sf)
         in_dim, out_dim = len(data[0][0]), len(data[0][1])
         logger.info('The input and output dimensions of models are {}, {}'.format(in_dim, out_dim))
-        # TODO fix random state
         train_loader, test_loader = utils.data.loader.get_data_loaders(data, config.bs,
                                                                        config.ratio, num_workers=4)
 

@@ -44,7 +44,6 @@ def train_uq(grid):
 
     in_dim, out_dim = len(data[0][0]), len(data[0][1])
     print('The input and output dimensions of models are {}, {}'.format(in_dim, out_dim))
-    # TODO: Integrate the number of layers and nodes
     model = models.RSResNet(in_dim=in_dim, out_dim=out_dim, k=int(grid['k']))
     optimizer = optim.SGD(
         model.parameters(),
@@ -77,7 +76,6 @@ if __name__ == '__main__':
     hyperopt_search = HyperOptSearch(
         hyperopt_space, max_concurrent=cfg.max_concurrent, metric="val_loss")
 
-    # TODO the numbers of nodes and layers
     # Bayesian
     bo_space = {'lr': (0.01, 0.11), 'bs': (50, 250), 'epoch': (10, 30), 'k': (1, 5)}
     bo_search = BayesOptSearch(
