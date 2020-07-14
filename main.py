@@ -1,47 +1,24 @@
-"""There are some things you have to do before getting through these scripts.
-!pip install -r requirements.txt
-!python -m visdom.server
-
-To use tune train, run:
-!python main.py tune_train
-
-The configures in grid.py could be changed temporarily with commands in the following way:
-!python main.py tune_train
-
-To load data from .csv:
-data_generator = generator.Generator()
-data = data_generator.load_from_csv(x_path='dataset/X.csv', y_path='dataset/Y.csv', save=True, shuffle=False)
-
-"""
-
 import collections
 import logging
-import os
-import pickle
 import time
-
-import numpy as np
 import torch
-import visdom
+import pickle
 from sklearn.model_selection import ParameterGrid
 from torch import optim
-
 import models
 import utils
-import utils.experiment_analysis
+import numpy as np
+import math
+import utils.analysis
+from matplotlib import pyplot as plt
+from matplotlib import colors
 from config import config
-from uq_toy import train, val, test
+from trainable import train, val, test
 from utils.data import generator
 from utils.data import loader
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(module)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-
-def get_data():
-    g = generator.Generator()
-    g.load_from_csv(x_path='/Users/schweini/Downloads/y_2.csv',
-                    name='tra_reactor_2')
 
 
 def trainable(grids):
@@ -103,7 +80,7 @@ def tune_train(**kwargs):
     config.parse(kwargs)
     # Change the things here for the hyperparameter tuning.
     # Some other parts are also available to change.
-    # i.e., to use different data in a single experiments, simply add:
+    # i.e., to use different dataset in a single experiments, simply add:
     # 'dp': ['dataset/you_name_it', ...]
     # The name has to be the same with those in grid.py
     # params = {'model': ['RSResNet'],  # The name of the model.
@@ -117,89 +94,43 @@ def tune_train(**kwargs):
     grids = list(ParameterGrid(params))
 
     analyst = trainable(grids)
-    viz = visdom.Visdom()
-    analyst.plot_loss(viz)
-    analyst.predict(viz, config.state, test)
 
 
-def plotter():
-    """ This is a function to recall the results of the experiments.
+def forecast(save_fig=False):
+    truth_path = config.truth_path
+    in_dim, out_dim = utils.kits.get_io_dim(truth_path)
+    model_path = 'results/RSResNet_88_4_2.pth'
+    model, legend = utils.kits.load_model_from_path(model_path, in_dim, out_dim)
+    try:
+        f = open(truth_path, 'rb')
 
-    :return:
-    """
-    load_result_path = 'results/'
-    analyst = utils.experiment_analysis.Analysis(pretrained=True, path=load_result_path)
-    viz = visdom.Visdom()
-    # TODO loading models, loading [loss]
-    analyst.plot_loss(viz)
-    # Change the dimensions of models if needed. This would be improved to be more automatically.
-    # See more at the declaration.
-    analyst.predict(viz, config.state, test)
+    except FileNotFoundError:
+        raise FileNotFoundError('No such file: {}'.format(config.truth_path))
 
+    trajectories = pickle.load(f)
+    l_plot_grid = math.ceil(math.sqrt(len(trajectories)))
+    w_plot_grid = math.ceil(len(trajectories) / l_plot_grid)
 
-def plot_from_ray():
-    state = config.state
-    viz = visdom.Visdom()
-    length = 200
+    c_map = plt.cm.get_cmap('gist_rainbow')
+    c_norm = colors.Normalize(vmin=0, vmax=out_dim-1)
+    scalar_map = plt.cm.ScalarMappable(norm=c_norm, cmap=c_map)
 
-    timeline = np.arange(0, length)
-    truth_dir = ['dataset/tra_reactor.pkl', 'dataset/tra_reactor_2.pkl']
-    for i in range(len(truth_dir)):
-        truth_path = truth_dir[i]
-        win = str(i)
+    for i, sample in enumerate(trajectories):
+        alpha, trajectory = sample
+        plt.subplot(l_plot_grid, w_plot_grid, i + 1)
+        x0 = [0.0] * out_dim
+        prediction = np.array(test(model, alpha, x0, len(trajectory) - 1))
+        trajectory = np.array(trajectory)
 
-        try:
-            with open(truth_path, 'rb') as f:
-                x_truth = np.array(pickle.load(f)).flatten().astype(np.float)
-                viz.line(X=timeline, Y=x_truth,
-                         win=win, name='truth',
-                         opts=dict(title='reactor' + win, legend=['truth'], showlegend=True))
-        except FileNotFoundError:
-            logging.warning('No ground truth available at {}.'.format(truth_path))
+        for j in range(out_dim):
+            color = scalar_map.to_rgba(j)
+            plt.plot(trajectory[:, j].transpose(), color=color)
+            plt.plot(prediction[:, j].transpose(), color=color, marker='.', markersize=3)
 
-        root = '/Users/schweini/ray_results/what'
-        subs = [f.path for f in os.scandir(root) if f.is_dir()]
-        for x in subs:
-            path = x + '/model.pth'
-            name = x[x.find('bs') + 3:x.find('bs') + 6] + '&' + x[x.find('lr') + 3:x.find('lr') + 11]
-            model = models.ResNet(in_dim=6)
-            model.load(path)
-            test(model, state[i], viz, win=win, name=name, dropout=False)
-
-
-def del_dir():
-    import shutil
-    d = {}
-    del_list_old = [0.052039, 0.084636, '0.10506_', '0.079736', 0.074631, 0.074787, 0.022334, 0.037443, 0.047974,
-                    0.047235, 0.091783, 0.069122, 0.067832, 0.080458]
-    del_list = [0.063088, 0.054819, 0.069071, 0.056882]
-    root = '/Users/schweini/ray_results/print2'
-    subs = [f.path for f in os.scandir(root) if f.is_dir()]
-    for x in subs:
-        k = x[x.find('lr') + 3:x.find('lr') + 11]
-        d.update([(k, x)])
-    for el in del_list:
-        try:
-            shutil.rmtree(d[str(el)], ignore_errors=True)
-            print('{} has been deleted.'.format(d[str(el)]))
-        except KeyError as e:
-            print('{} no found.'.format(e))
-
-
-def temp():
-    a = utils.kits.load_trajectory(x_path='/Users/schweini/Downloads/XT.csv',
-                                   y_path='/Users/schweini/Downloads/YT.csv')
-    print(len(a))
+    if save_fig:
+        plt.savefig('test.png', dpi=600)
+    plt.show()
 
 
 if __name__ == '__main__':
-    # import fire
-    #
-    # fire.Fire()
-    grid = {'bs': 5, 'epoch': 5, 'model': 'RSResNet', 'lr': 0.11, 'ratio': 0.3, 'dp': 'dataset/george_ns.pkl'}
-    grids = [grid]
-    analyst = trainable(grids)
-    viz = visdom.Visdom()
-    analyst.plot_loss(viz)
-    # TODO val the model with some other data
-    analyst.predict(viz, config.state, test)
+    forecast()

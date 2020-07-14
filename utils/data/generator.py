@@ -97,13 +97,13 @@ class Generator:
         return data
 
     def load_from_csv(self, x_path, name=None, shuffle=False, y_path=None, header=False, save=True):
-        """Loading data from csv, with
+        """Loading dataset from csv, with
         generator.load_from_csv(x_path='dataset/X.csv', y_path='dataset/Y.csv')
 
         :param shuffle: If shuffle.
         :param name: Name the file that is going to be saved later.
         :param save: If save.
-        :param x_path: The path of data.
+        :param x_path: The path of dataset.
         :param y_path: The path of Y (if needed).
         :param header: True if the csv has a header.
         :return:

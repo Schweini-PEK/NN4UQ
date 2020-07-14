@@ -13,56 +13,79 @@ should be the same.
 
 """
 import logging
-import os
-
 import torch
 import torch.optim as optim
 from hyperopt import hp
+from config import config
+import ray
+import time
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler, AsyncHyperBandScheduler
 from ray.tune.suggest.bayesopt import BayesOptSearch
 from ray.tune.suggest.hyperopt import HyperOptSearch
-
 import models
 import utils
 from config import config as cfg
-from uq_toy import train, val
+from trainable import train, val
 from utils.data import loader
+from utils.kits import setup_seed
+
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(module)s - %(message)s')
+SEED = 77
 
 
-# def train_uq(grid, reporter):
 def train_uq(grid):
+    setup_seed(SEED)
     cfg.parse(grid)
-    path = os.path.dirname(os.path.realpath(__file__)) + '/dataset/reactor.pkl'
-    data = utils.data.loader.LoadDataset(path=path)
+
+    data = utils.data.loader.LoadDataset(path=config.data_path)
+    nodes = int(grid['nodes'])
+    layers = int(grid['layers'])
+    k = int(grid['k'])
+    bs = int(grid['bs'])
 
     train_loader, test_loader = utils.data.loader.get_data_loaders(data,
-                                                                   batch_size=int(grid['bs']),
+                                                                   batch_size=bs,
                                                                    num_workers=4)
 
     in_dim, out_dim = len(data[0][0]), len(data[0][1])
-    print('The input and output dimensions of models are {}, {}'.format(in_dim, out_dim))
-    model = models.RSResNet(in_dim=in_dim, out_dim=out_dim, k=int(grid['k']))
+
+    model = None
+
+    if config.model == 'RSResNet':
+        model = models.RSResNet(in_dim=in_dim, out_dim=out_dim, k=k,
+                                n_h_layers=layers, h_dim=nodes, block=models.BNResBlock)
+
+        name = 'RSResNet_' + str(nodes) + '_' + str(layers) + '_' + str(k) + '.pth'
+
+    elif config.model == 'RTResNet':
+        model = models.RTResNet(in_dim=in_dim, out_dim=out_dim, k=k,
+                                n_h_layers=layers, h_dim=nodes, block=models.BNResBlock)
+
+        name = 'RTResNet_' + str(nodes) + '_' + str(layers) + '_' + str(k) + '.pth'
+
+    else:
+        raise NameError('No such model: {}'.format(config.model))
+
     optimizer = optim.SGD(
         model.parameters(),
         lr=grid["lr"])
     for i in range(int(grid['epoch'])):
         train(model, optimizer, train_loader, torch.device("cpu"))
         acc = val(model, test_loader, torch.device("cpu"))
-        # reporter(
-        #     timesteps_total=i,
-        #     val_loss=acc
-        # )
         tune.track.log(val_loss=acc)
-        if (i + 1) % 50 == 0:
-            model.save(path="./model.pth")
-    model.save(path="./model.pth")
+        if (i + 1) % 5 == 0:
+            model.save(path=name)
+    model.save(path=name)
 
 
 if __name__ == '__main__':
-    # Basic Ray Tune Grid Search
+    ray.init(num_cpus=20)
+    time.sleep(60)
+    num_gpus = torch.cuda.device_count()
+
+    # Ray Tune Grid Search
     search_space = {
         "lr": tune.choice([0.01, 0.05, 0.1]),
         "bs": tune.choice([4, 8]),
@@ -70,17 +93,22 @@ if __name__ == '__main__':
 
     # HyperOpt
     hyperopt_space = {
-        "lr": hp.uniform("lr", 0.01, 0.11),
-        "bs": hp.randint("bs", 16, 128),
+        "lr": hp.uniform("lr", 0.001, 0.0099),
+        "bs": hp.randint("bs", 4, 48),
+        "epoch": hp.randint("epoch", 30, 70),
+        "layers": hp.randint("layers", 3, 9),
+        "nodes": hp.randint("nodes", 40, 200),
+        "k": hp.randint("k", 2, 10)
     }
-    hyperopt_search = HyperOptSearch(
-        hyperopt_space, max_concurrent=cfg.max_concurrent, metric="val_loss")
+    hyperopt_search_alg = HyperOptSearch(
+        hyperopt_space, metric="val_loss", mode='min')
+    hyperopt_search_alg = tune.suggest.ConcurrencyLimiter(hyperopt_search_alg, max_concurrent=10)
 
     # Bayesian
-    bo_space = {'lr': (0.01, 0.11), 'bs': (50, 250), 'epoch': (10, 30), 'k': (1, 5)}
-    bo_search = BayesOptSearch(
+    bo_space = {'lr': (0.0001, 0.008), 'bs': (4, 64), 'epoch': (20, 30.99), 'layers': (3, 8.99), 'nodes': (4, 30.99),
+                'k': (2, 4.99)}
+    bo_search_alg = BayesOptSearch(
         space=bo_space,
-        max_concurrent=4,
         metric='val_loss',
         mode='min',
         utility_kwargs={
@@ -89,14 +117,13 @@ if __name__ == '__main__':
             "xi": 0.0
         }
     )
-    ahb_scheduler = AsyncHyperBandScheduler(metric="val_loss", mode="min")
-    ashas_scheduler = ASHAScheduler(metric='val_loss', mode='min', max_t=1000, grace_period=50)
+    bo_search_alg = tune.suggest.ConcurrencyLimiter(bo_search_alg, max_concurrent=10)
 
-    # analysis = tune.run(train_uq, config=search_space, num_samples=cfg.n_samples,
-    #                     search_alg=hyperopt_search,
-    #                     scheduler=ashas_scheduler)
-    analysis = tune.run(train_uq, name='test', search_alg=bo_search, scheduler=ashas_scheduler,
-                        num_samples=4)
+    ahb_scheduler = AsyncHyperBandScheduler(metric="val_loss", mode="min")
+    ashas_scheduler = ASHAScheduler(metric='val_loss', mode='min', max_t=1000, grace_period=6)
+
+    analysis = tune.run(train_uq, name='0_test', search_alg=hyperopt_search_alg, scheduler=ashas_scheduler,
+                        num_samples=10, resources_per_trial={"cpu": 1, "gpu": num_gpus})
     dfs = analysis.trial_dataframes
 
     print("Best hyperparameters: ", analysis.get_best_config(metric='val_loss', mode='min'))

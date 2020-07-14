@@ -1,13 +1,16 @@
 """
-Here are some kits I used to simplify the main program.
+Here are some kits.
 """
 
-import csv
 import random
-
+import pickle
+import os
+import csv
 import numpy as np
 import torch
 from torch import nn
+import models
+import re
 
 
 def setup_seed(seed):
@@ -44,45 +47,48 @@ def apply_dropout(m):
         m.train()
 
 
-def print_variable(func):
+def show_variable(func):
     config_list = []
     for k in vars(func):
-        # if not k.startswith('__'):
-        #     config_list.append('{}: {}'.format(k, vars(func).get(k)))
         config_list.append('{}: {}'.format(k, vars(func).get(k)))
 
     return config_list
 
 
-def load_trajectory(x_path, y_path):
-    with open(x_path, 'r')as x_all:
-        x_reader = csv.reader(x_all)
-        samples = list(x_reader)
+def load_trajectory(x_path, y_path, save_path):
+    with open(x_path, 'r')as f_x:
+        reader_x = csv.reader(f_x)
+        data_x = list(reader_x)
+        alphas, lengths = [], []
+        k = 0
+        for i in range(len(data_x)):
+            if data_x[i][0] == '0':
+                lengths.append(i - k)
+                k = i
+                alphas.append([float(j) for j in data_x[i]])
+        lengths.append(len(data_x) - sum(lengths))
+        lengths.remove(0)
 
     with open(y_path, 'r')as f_y:
         reader_y = csv.reader(f_y)
-
-        for row in reader_y:
-            print(row)
-            break
-
         # Get number of out_dim
         out_dim = len(next(reader_y))
         f_y.seek(0)
-        for row in reader_y:
-            print(row)
-            break
 
-    with open(x_path, 'r')as x_all:
-        alphas = set()
-        starter = []
-        count = 0
-        x_reader = csv.reader(x_all)
-        for row in x_reader:
-            alpha = tuple(row[out_dim:])
-            if alpha not in alpha:
-                alphas.add(alpha)
-        return alphas
+        alphas = np.array(alphas)[:, out_dim:].tolist()
+
+        trajectories = []
+        for i in range(len(lengths)):
+            # Load each trajectory
+            trajectory = []
+            for j in range(lengths[i]):
+                trajectory.append(next(reader_y))
+            trajectories.append(np.array(trajectory).flatten().astype(np.float).tolist())
+
+    data = (lengths, alphas, trajectories)
+    with open(save_path, 'wb') as f:
+        pickle.dump(data, f)
+    return data
 
 
 def k_fold_index_gen(idx, k=5):
@@ -115,3 +121,70 @@ def k_fold_index_gen(idx, k=5):
         milestone.append(i * split)
     milestone.append(len(idx))
     return milestone
+
+
+def get_pth_from_dir(root):
+    models_path = [root + f for f in os.listdir(root) if os.path.isfile(os.path.join(root, f))]
+    return models_path
+
+
+def get_pth_from_subdir(root):
+    subs = [f.path for f in os.scandir(root) if f.is_dir()]
+    models_path = []
+    for sub in subs:
+        files = os.listdir(sub)
+        for file_name in files:
+            if file_name.endswith('pth'):
+                models_path.append(sub + '/' + file_name)
+
+    return models_path
+
+
+def columns2csv(output_path, *args):
+    rows = zip(*args)
+    rows2csv(output_path, rows)
+
+
+def rows2csv(output_path, rows):
+    with open(output_path, 'a+') as f:
+        writer = csv.writer(f)
+        for row in rows:
+            writer.writerow(row)
+
+
+def load_model_from_path(path, in_dim, out_dim):
+    """Load the PyTorch model based on the path (i.e., 'results/RSResNet_88_4_2.pth').
+
+    :param in_dim: The input dimension of the model, should be equal to |variables| + |uncertainty parameters|
+    :param out_dim: The output dimension of the model, should be equal to |variables|
+    :param path: The path of the model.
+    :return: The PyTorch model and its legend.
+    """
+    name = path.split('/')[-1].split('.')[0]
+    module = name.split('_')[0]
+    model, legend = None, None
+
+    if module == 'RSResNet':
+        nodes, layers, k = [int(i) for i in name.split('_')[1:]]
+        model = getattr(models, module)(h_dim=nodes, n_h_layers=layers, k=k, block=models.BNResBlock,
+                                        in_dim=in_dim, out_dim=out_dim)
+        model.load(path)
+        legend = '{}N{}L{}K'.format(nodes, layers, k)
+
+    else:
+        raise NameError('No such module: {}'.format(module))
+    return model, legend
+
+
+def get_io_dim(path):
+    """Get the IO dimensions based on the path (i.e., 'dataset/truth_x3a5.pkl').
+
+    The path must contain the following substring 'x1a1', where the numbers of variables and uncertainty parameters have
+    been pointed out.
+    :param path:
+    :return: The input and output dimensions for the model.
+    """
+    path = path.split('/')[-1].split('.')[0]
+    out_dim = int(re.search('x(.*)a', path).group(1))
+    in_dim = out_dim + int(re.search('a(.*)', path).group(1))
+    return in_dim, out_dim

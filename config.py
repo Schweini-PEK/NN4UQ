@@ -4,15 +4,11 @@ logger = logging.getLogger(__name__)
 
 
 class DefaultConfig(object):
-    def __init__(self):
-        self.bs = 8
-        self.model = 'MLP'
-        self.lr = 0.1
-        self.epoch = 5
-
-    dp = 'dataset/george_ns.pkl'  # data path
+    # data_path = '/Users/schweini/Desktop/Mesbah/Code/NN4UQ/dataset/data_72000_x3a5.pkl'
+    data_path = '/global/home/users/schweini/research/NN4UQ/dataset/data_18000_x3a4.pkl'
     ratio = 0.9
 
+    model = 'RSResNet'
     use_gpu = True
     max_concurrent = 6
     n_samples = 2
@@ -20,16 +16,18 @@ class DefaultConfig(object):
     val_freq = 5
     print_freq = 50
 
-    k = 3  # For RSResNet
-    nh = 30  # The number of nodes of hidden layers.
-    state = {'length': 300, 'alpha': 0.3225, 'x': 1.0}
+    # Default parameters for all the neural nets
+    h_dim = (4, 15)  # The dimension of hidden layers
+    n_h_layers = (2, 6)  # The number of hidden layers
+    bs = (2, 20)
+    lr = (1e-4, 1e-2)
+    epoch = (100, 300)
 
-    # state = [{'x_0': [0],
-    #          'alpha': [14.16, 1.0104, 0.19249, 0.83487, 0.028437], 'length': 200},
-    #          {'x_0': [0],
-    #           'alpha': [12.702, 3.9022, 0.25695, 0.84427, 0.011431], 'length': 200},
-    #          ]
-    #
+    # Default parameters for RSResNet and RTResNet
+    k = 3
+
+    # Default parameters for testing
+    truth_path = 'dataset/truth_x3a5.pkl'
 
     def parse(self, kwargs):
         """ Update the grid parameters from kwargs
