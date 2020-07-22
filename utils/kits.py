@@ -2,15 +2,17 @@
 Here are some kits.
 """
 
-import random
-import pickle
-import os
 import csv
+import os
+import pickle
+import random
+import re
+
 import numpy as np
 import torch
 from torch import nn
+
 import models
-import re
 
 
 def setup_seed(seed):
@@ -186,5 +188,5 @@ def get_io_dim(path):
     """
     path = path.split('/')[-1].split('.')[0]
     out_dim = int(re.search('x(.*)a', path).group(1))
-    in_dim = out_dim + int(re.search('a(.*)', path).group(1))
+    in_dim = out_dim + int(re.search('a(.*)\D*', path).group(1))
     return in_dim, out_dim

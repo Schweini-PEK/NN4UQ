@@ -1,8 +1,9 @@
-import pickle
 import csv
-import random
+import pickle
 from os import listdir
 from os.path import join
+
+import torch
 
 
 def preprocessor(src, trg, test=False):
@@ -18,44 +19,34 @@ def preprocessor(src, trg, test=False):
             if test:
                 sample = []
                 for line in reader:
-                    sample.append(line[1:])
+                    x_future = list(map(float, line[1:]))
+                    sample.append(x_future)
                 samples.append([alpha, sample])
+                n_x = len(sample[0])
 
             else:
-                x_prior = next(reader)[1:]
+                x_prior = list(map(float, next(reader)[1:]))
                 n_x = len(x_prior)
                 for line in reader:
-                    x_future = line[1:]
-                    samples.append([x_prior + alpha, x_future])
+                    x_future = list(map(float, line[1:]))
+                    samples.append([torch.tensor(x_prior + alpha),
+                                    torch.tensor(x_future)])
                     x_prior = x_future
 
+    path = None
     if test:
-        print("TODO")
+        path = trg + '/NS_truth_x{}a{}.pkl'.format(n_x, n_a)
 
     else:
         path = trg + '/data_{}_x{}a{}.pkl'.format(len(samples), n_x, n_a)
-        with open(path, 'wb') as f_save:
-            pickle.dump(samples, f_save)
-        print('Save data at {}'.format(path))
-
-
-# def re_loader(src, trg, test=False):
+    with open(path, 'wb') as f_save:
+        pickle.dump(samples, f_save)
+    print('Save data at {}'.format(path))
 
 
 if __name__ == '__main__':
-
-    dir = "/Users/schweini/Downloads/DataFengzhe"
-    # dir = "/Users/schweini/Downloads/test"
-    # target = 'dataset/data_72000_x3a5.pkl'
+    source = "/Users/schweini/Downloads/Data_Non_Smooth"
+    # source = "/Users/schweini/Desktop/test"
     target = 'dataset'
 
-    # preprocessor(dir, target)
-    f = open('dataset/data_72000_x3a5.pkl', 'rb')
-    data = pickle.load(f)
-    new_data = []
-    for i, d in enumerate(data):
-        # j = random.randint(0, 400)
-        if i % 400 == 177:
-            new_data.append(d)
-
-    print(len(new_data))
+    preprocessor(source, target, test=False)

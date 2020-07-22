@@ -1,17 +1,19 @@
 import collections
 import logging
-import time
-import torch
+import math
 import pickle
+import time
+
+import numpy as np
+import torch
+from matplotlib import colors
+from matplotlib import pyplot as plt
 from sklearn.model_selection import ParameterGrid
 from torch import optim
+
 import models
 import utils
-import numpy as np
-import math
 import utils.analysis
-from matplotlib import pyplot as plt
-from matplotlib import colors
 from config import config
 from trainable import train, val, test
 from utils.data import generator
@@ -97,9 +99,9 @@ def tune_train(**kwargs):
 
 
 def forecast(save_fig=False):
-    truth_path = config.truth_path
+    truth_path = 'dataset/truth_x3a4.pkl'
     in_dim, out_dim = utils.kits.get_io_dim(truth_path)
-    model_path = 'results/RSResNet_88_4_2.pth'
+    model_path = 'results/x3a4/RSResNet_145_3_2.pth'
     model, legend = utils.kits.load_model_from_path(model_path, in_dim, out_dim)
     try:
         f = open(truth_path, 'rb')
@@ -114,9 +116,11 @@ def forecast(save_fig=False):
     c_map = plt.cm.get_cmap('gist_rainbow')
     c_norm = colors.Normalize(vmin=0, vmax=out_dim-1)
     scalar_map = plt.cm.ScalarMappable(norm=c_norm, cmap=c_map)
+    fig, axs = plt.subplots(l_plot_grid, w_plot_grid)
 
     for i, sample in enumerate(trajectories):
         alpha, trajectory = sample
+        print(i, alpha)
         plt.subplot(l_plot_grid, w_plot_grid, i + 1)
         x0 = [0.0] * out_dim
         prediction = np.array(test(model, alpha, x0, len(trajectory) - 1))
@@ -125,12 +129,13 @@ def forecast(save_fig=False):
         for j in range(out_dim):
             color = scalar_map.to_rgba(j)
             plt.plot(trajectory[:, j].transpose(), color=color)
-            plt.plot(prediction[:, j].transpose(), color=color, marker='.', markersize=3)
+            plt.plot(prediction[:, j].transpose(), color=color, marker='o', markersize=3)
 
     if save_fig:
-        plt.savefig('test.png', dpi=600)
+        fig = 'prediction_{}.png'.format(time.strftime("%H:%M:%S", time.localtime()))
+        plt.savefig(fig, dpi=1000)
     plt.show()
 
 
 if __name__ == '__main__':
-    forecast()
+    forecast(save_fig=False)

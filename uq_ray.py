@@ -13,26 +13,26 @@ should be the same.
 
 """
 import logging
+
+import ray
 import torch
 import torch.optim as optim
 from hyperopt import hp
-from config import config
-import ray
-import time
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler, AsyncHyperBandScheduler
 from ray.tune.suggest.bayesopt import BayesOptSearch
 from ray.tune.suggest.hyperopt import HyperOptSearch
+
 import models
 import utils
+from config import config
 from config import config as cfg
 from trainable import train, val
 from utils.data import loader
 from utils.kits import setup_seed
 
-
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(module)s - %(message)s')
-SEED = 77
+SEED = 6
 
 
 def train_uq(grid):
@@ -49,7 +49,8 @@ def train_uq(grid):
                                                                    batch_size=bs,
                                                                    num_workers=4)
 
-    in_dim, out_dim = len(data[0][0]), len(data[0][1])
+    # in_dim, out_dim = len(data[0][0]), len(data[0][1])
+    in_dim, out_dim = 8, 3
 
     model = None
 
@@ -71,7 +72,8 @@ def train_uq(grid):
     optimizer = optim.SGD(
         model.parameters(),
         lr=grid["lr"])
-    for i in range(int(grid['epoch'])):
+    # for i in range(int(grid['epoch'])):
+    for i in range(400):
         train(model, optimizer, train_loader, torch.device("cpu"))
         acc = val(model, test_loader, torch.device("cpu"))
         tune.track.log(val_loss=acc)
@@ -81,8 +83,8 @@ def train_uq(grid):
 
 
 if __name__ == '__main__':
-    ray.init(num_cpus=20)
-    time.sleep(60)
+    ray.init(num_cpus=10)
+    # time.sleep(60)
     num_gpus = torch.cuda.device_count()
 
     # Ray Tune Grid Search
@@ -95,14 +97,14 @@ if __name__ == '__main__':
     hyperopt_space = {
         "lr": hp.uniform("lr", 0.001, 0.0099),
         "bs": hp.randint("bs", 4, 48),
-        "epoch": hp.randint("epoch", 30, 70),
+        # "epoch": hp.randint("epoch", 30, 70),
         "layers": hp.randint("layers", 3, 9),
         "nodes": hp.randint("nodes", 40, 200),
         "k": hp.randint("k", 2, 10)
     }
     hyperopt_search_alg = HyperOptSearch(
         hyperopt_space, metric="val_loss", mode='min')
-    hyperopt_search_alg = tune.suggest.ConcurrencyLimiter(hyperopt_search_alg, max_concurrent=10)
+    hyperopt_search_alg = tune.suggest.ConcurrencyLimiter(hyperopt_search_alg, max_concurrent=20)
 
     # Bayesian
     bo_space = {'lr': (0.0001, 0.008), 'bs': (4, 64), 'epoch': (20, 30.99), 'layers': (3, 8.99), 'nodes': (4, 30.99),
@@ -117,13 +119,13 @@ if __name__ == '__main__':
             "xi": 0.0
         }
     )
-    bo_search_alg = tune.suggest.ConcurrencyLimiter(bo_search_alg, max_concurrent=10)
+    bo_search_alg = tune.suggest.ConcurrencyLimiter(bo_search_alg, max_concurrent=20)
 
     ahb_scheduler = AsyncHyperBandScheduler(metric="val_loss", mode="min")
     ashas_scheduler = ASHAScheduler(metric='val_loss', mode='min', max_t=1000, grace_period=6)
 
-    analysis = tune.run(train_uq, name='0_test', search_alg=hyperopt_search_alg, scheduler=ashas_scheduler,
-                        num_samples=10, resources_per_trial={"cpu": 1, "gpu": num_gpus})
+    analysis = tune.run(train_uq, name='delete', search_alg=hyperopt_search_alg, scheduler=ashas_scheduler,
+                        num_samples=1, resources_per_trial={"cpu": 1, "gpu": num_gpus})
     dfs = analysis.trial_dataframes
 
     print("Best hyperparameters: ", analysis.get_best_config(metric='val_loss', mode='min'))
