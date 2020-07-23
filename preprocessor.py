@@ -1,3 +1,4 @@
+import argparse
 import csv
 import pickle
 from os import listdir
@@ -45,8 +46,10 @@ def preprocessor(src, trg, test=False):
 
 
 if __name__ == '__main__':
-    source = "/Users/schweini/Downloads/Data_Non_Smooth"
-    # source = "/Users/schweini/Desktop/test"
-    target = 'dataset'
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", "-i", required=True, type=str, help="Input dir")
+    parser.add_argument("--output", "-o", default="dataset", type=str, help="Output dir")
+    parser.add_argument("--test", "-t", default=False, type=bool, help="Test set or not")
+    args = parser.parse_args()
 
-    preprocessor(source, target, test=False)
+    preprocessor(args.input, args.output, test=args.test)

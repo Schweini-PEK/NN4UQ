@@ -1,4 +1,5 @@
 import logging
+import os
 
 import ray
 import torch
@@ -22,13 +23,14 @@ from utils.kits import setup_seed
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(module)s - %(message)s')
 SEED = 6
+data_path = os.getcwd() + '/dataset/NS_24000_x3a5.pkl'
 
 
 def train_uq(grid):
     setup_seed(SEED)
     cfg.parse(grid)
 
-    data = utils.data.loader.LoadDataset(path=config.data_path)
+    data = utils.data.loader.LoadDataset(path=data_path)
     nodes = int(grid['nodes'])
     layers = int(grid['layers'])
     k = int(grid['k'])
@@ -117,7 +119,7 @@ if __name__ == '__main__':
             "xi": 0.0
         }
     )
-    bo_search_alg = tune.suggest.ConcurrencyLimiter(bo_search_alg, max_concurrent=20)
+    bo_search_alg = tune.suggest.ConcurrencyLimiter(bo_search_alg, max_concurrent=24)
 
     ahb_scheduler = AsyncHyperBandScheduler(metric="val_loss", mode="min")
     ashas_scheduler = ASHAScheduler(metric='val_loss', mode='min', max_t=1000, grace_period=6)
