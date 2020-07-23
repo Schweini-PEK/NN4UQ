@@ -23,8 +23,6 @@ class LoadDataset(Dataset):
 
     def __getitem__(self, item):
         x, y = self.data[item]
-        # x = np.array(x).astype(float)
-        # y = np.array(y).astype(float)
         return x, y
 
     def __len__(self):

@@ -50,4 +50,6 @@ class AttnPDE(nn.Module):
         super(AttnPDE, self).__init__()
         self.w = window
 
+        self.dense1 = nn.Linear(in_channels, 20)
         self.cnn = nn.Conv1d(in_channels, out_channels, kernel_size)
+        self.lstm = nn.LSTM(input_size=in_channels, hidden_size=10, batch_first=True)
