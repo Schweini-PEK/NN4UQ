@@ -20,4 +20,4 @@
 #SBATCH --mail-user=schweini@berkeley.edu
 
 ## Command(s) to run:
-python ../uq_ray.py
+python ../noah.py

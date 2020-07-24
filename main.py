@@ -1,9 +1,11 @@
+import argparse
 import logging
 import math
 import pickle
 import time
 
 import numpy as np
+import torch
 from matplotlib import colors
 from matplotlib import pyplot as plt
 
@@ -16,14 +18,14 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(module)s - %(m
 logger = logging.getLogger(__name__)
 
 
-def forecast(save_fig=False):
-    truth_path = 'dataset/NS_truth_x3a5.pkl'
+def forecast(model_path, truth_path, save_fig=False):
+    torch.manual_seed(6)
+
     in_dim, out_dim = utils.kits.get_io_dim(truth_path)
-    model_path = 'results/NS_x3a5/RSResNet_197_6_3.pth'
     model, legend = utils.kits.load_model_from_path(model_path, in_dim, out_dim)
+
     try:
         f = open(truth_path, 'rb')
-
     except FileNotFoundError:
         raise FileNotFoundError('No such file: {}'.format(config.truth_path))
 
@@ -59,4 +61,12 @@ def forecast(save_fig=False):
 
 
 if __name__ == '__main__':
-    forecast(save_fig=False)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--save", "-s", default=False, type=bool, help="Save figure")
+    parser.add_argument("--model", "-m", help="Model for predicting",
+                        default='results/NS_x3a5/RSResNet_138_7_2.pth')
+    parser.add_argument("--dataset", "-d", help="Test set",
+                        default='dataset/truth_x3a5_20_1.pkl')
+    args = parser.parse_args()
+
+    forecast(model_path=args.model, truth_path=args.dataset, save_fig=args.save)

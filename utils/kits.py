@@ -188,5 +188,5 @@ def get_io_dim(path):
     """
     path = path.split('/')[-1].split('.')[0]
     out_dim = int(re.search('x(.*)a', path).group(1))
-    in_dim = out_dim + int(re.search('a(.*)\D*', path).group(1))
+    in_dim = out_dim + int(re.search('(?<=a)(\d*)(?=\D)', path).group(1))
     return in_dim, out_dim
