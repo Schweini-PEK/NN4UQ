@@ -51,8 +51,8 @@ def forecast(model_path, truth_path, save_fig=False):
 
         for j in range(out_dim):
             color = scalar_map.to_rgba(j)
-            axes[axes_x][axes_y].plot(trajectory[:, j].transpose(), color=color)
-            axes[axes_x][axes_y].plot(prediction[:, j].transpose(), color=color, marker='o', markersize=3)
+            axes[axes_x][axes_y].plot(trajectory[:, j].transpose(), color=color, linewidth=4)
+            axes[axes_x][axes_y].plot(prediction[:, j].transpose(), ':', color=color, markersize=3, linewidth=4)
 
     if save_fig:
         fig = 'prediction_{}.png'.format(time.strftime("%H:%M:%S", time.localtime()))

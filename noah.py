@@ -1,5 +1,3 @@
-import time
-
 import ray
 import torch
 import torch.optim as optim
@@ -16,17 +14,19 @@ from torch import nn
 import models
 import utils
 from config import config
-from config import config as cfg
 from utils.data import loader
 from utils.kits import setup_seed
 
 SEED = 6
-data_path = '/Users/schweini/Desktop/CUBES/Codes/NN4UQ/dataset/NS_24000_x3a5.pkl'
+# data_path = '/global/home/users/schweini/research/NN4UQ/dataset/data_22600_x3a5.pkl'
+data_path = '/Users/schweini/Desktop/CUBES/Codes/NN4UQ/dataset/data_22600_x3a5.pkl'
 
 
 def train_uq(grid):
     setup_seed(SEED)
-    cfg.parse(grid)
+    config.parse(grid)
+    print(config.bs)
+    print(type(config.bs))
 
     data = utils.data.loader.LoadDataset(path=data_path)
     nodes = int(grid['nodes'])
@@ -36,7 +36,7 @@ def train_uq(grid):
 
     train_loader, val_loader = utils.data.loader.get_data_loaders(data,
                                                                   batch_size=bs,
-                                                                  num_workers=0)
+                                                                  num_workers=4)
 
     in_dim, out_dim = len(data[0][0]), len(data[0][1])
 
@@ -51,6 +51,10 @@ def train_uq(grid):
                                 n_h_layers=layers, h_dim=nodes, block=models.BNResBlock)
 
         name = 'RTResNet_' + str(nodes) + '_' + str(layers) + '_' + str(k) + '.pth'
+
+    elif config.model == 'MLP':
+        model = models.DynamicMLP(in_dim=in_dim, out_dim=out_dim,
+                                  n_hidden=layers, h_dim=nodes)
 
     else:
         raise NameError('No such model: {}'.format(config.model))
@@ -78,14 +82,14 @@ def train_uq(grid):
         tune.track.log(val_loss=metrics["L1"])
 
     trainer.add_event_handler(Events.ITERATION_COMPLETED, TerminateOnNan())
-    trainer.run(train_loader, max_epochs=100)
+    trainer.run(train_loader, max_epochs=300)
     model.save(path=name)
 
 
 if __name__ == '__main__':
-    ray.init(num_cpus=24)
-    time.sleep(99)
-    num_gpu = torch.cuda.device_count()
+    ray.init(num_cpus=4)
+    # time.sleep(99)
+    num_gpus = torch.cuda.device_count()
 
     # Ray Tune Grid Search
     search_space = {
@@ -101,7 +105,8 @@ if __name__ == '__main__':
         "nodes": hp.randint("nodes", 40, 200),
         "k": hp.randint("k", 2, 10)
     }
-    hyperopt_search_alg = HyperOptSearch(hyperopt_space, metric="val_loss", mode='min', max_concurrent=20)
+    hyperopt_search_alg = HyperOptSearch(
+        hyperopt_space, metric="val_loss", max_concurrent=20, mode='min')
 
     # Bayesian
     bo_space = {'lr': (0.0001, 0.008), 'bs': (4, 64), 'epoch': (20, 30.99), 'layers': (3, 8.99), 'nodes': (4, 30.99),
@@ -114,14 +119,15 @@ if __name__ == '__main__':
             "kind": "ucb",
             "kappa": 2.5,
             "xi": 0.0
-        }
+        },
+        max_concurrent=20
     )
 
     ahb_scheduler = AsyncHyperBandScheduler(metric="val_loss", mode="min")
-    ashas_scheduler = ASHAScheduler(metric='val_loss', mode='min', max_t=1000, grace_period=6)
+    ashas_scheduler = ASHAScheduler(metric='val_loss', mode='min', max_t=1000, grace_period=3)
 
-    analysis = tune.run(train_uq, name='delete', search_alg=hyperopt_search_alg, scheduler=ashas_scheduler,
-                        num_samples=10, resources_per_trial={"cpu": 1})
+    analysis = tune.run(train_uq, name='lastshot_0', search_alg=hyperopt_search_alg, scheduler=ashas_scheduler,
+                        num_samples=1, resources_per_trial={"cpu": 1})
     dfs = analysis.trial_dataframes
 
     print("Best hyperparameters: ", analysis.get_best_config(metric='val_loss', mode='min'))

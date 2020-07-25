@@ -186,7 +186,7 @@ def get_io_dim(path):
     :param path:
     :return: The input and output dimensions for the model.
     """
-    path = path.split('/')[-1].split('.')[0]
+    path = path.split('/')[-1]
     out_dim = int(re.search('x(.*)a', path).group(1))
     in_dim = out_dim + int(re.search('(?<=a)(\d*)(?=\D)', path).group(1))
     return in_dim, out_dim

@@ -32,17 +32,19 @@ def preprocessor(src, trg, name, test=False):
                     sample.append(list(map(float, line[1:])))
                 samples.append([alpha, sample])
                 n_x = len(sample[0])
-                print(n_x)
-                print(sample[0])
 
             else:
                 x_prior = list(map(float, next(reader)[1:]))
                 n_x = len(x_prior)
                 for line in reader:
-                    x_future = list(map(float, line[1:]))
-                    samples.append([torch.tensor(x_prior + alpha),
-                                    torch.tensor(x_future)])
-                    x_prior = x_future
+                    try:
+                        x_future = list(map(float, line[1:]))
+                        samples.append([torch.tensor(x_prior + alpha),
+                                        torch.tensor(x_future)])
+                        x_prior = x_future
+                    except ValueError as e:
+                        print('In file {}, check the line: {}'.format(f_path, line))
+                        raise
 
     if name is None:
         if test:
@@ -54,7 +56,7 @@ def preprocessor(src, trg, name, test=False):
         name = trg + name + '.pkl'
     with open(name, 'wb') as f_save:
         pickle.dump(samples, f_save)
-    print('Save data at {}'.format(name))
+    print('Save {} samples at {}'.format(len(samples), name))
 
 
 if __name__ == '__main__':

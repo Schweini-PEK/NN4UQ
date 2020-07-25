@@ -4,8 +4,7 @@ logger = logging.getLogger(__name__)
 
 
 class DefaultConfig(object):
-    data_path = '/Users/schweini/Desktop/CUBES/Codes/NN4UQ/dataset/NS_24000_x3a5.pkl'
-    # data_path = '/global/home/users/schweini/research/NN4UQ/dataset/data_18000_x3a4.pkl'
+    data_path = '/global/home/users/schweini/research/NN4UQ/dataset/data_22600_x3a5.pkl'
     ratio = 0.9
 
     model = 'RSResNet'
@@ -16,12 +15,15 @@ class DefaultConfig(object):
     val_freq = 5
     log_interval = 50
 
-    # Default parameters for all the neural nets
+    # Default parameters for tuning
     h_dim = (4, 15)  # The dimension of hidden layers
     n_h_layers = (2, 6)  # The number of hidden layers
-    bs = (2, 20)
+    batch_size = (2, 20)
     lr = (1e-4, 1e-2)
     epoch = (100, 300)
+
+    # Default parameters for running
+    bs = 48
 
     # Default parameters for RSResNet and RTResNet
     k = 3

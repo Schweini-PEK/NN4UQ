@@ -1,6 +1,6 @@
 #!/bin/bash
 # Job name:
-#SBATCH --job-name=NN4UQ_ns
+#SBATCH --job-name=NN4UQ_ns_2
 #
 # Account:
 #SBATCH --account=fc_mllam
