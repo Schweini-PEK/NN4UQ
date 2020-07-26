@@ -5,7 +5,6 @@ import pickle
 import time
 
 import numpy as np
-import torch
 from matplotlib import colors
 from matplotlib import pyplot as plt
 
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def forecast(model_path, truth_path, save_fig=False):
-    torch.manual_seed(6)
+    # torch.manual_seed(6)
 
     in_dim, out_dim = utils.kits.get_io_dim(truth_path)
     model, legend = utils.kits.load_model_from_path(model_path, in_dim, out_dim)
@@ -37,7 +36,6 @@ def forecast(model_path, truth_path, save_fig=False):
     c_norm = colors.Normalize(vmin=0, vmax=out_dim - 1)
     scalar_map = plt.cm.ScalarMappable(norm=c_norm, cmap=c_map)
     fig, axes = plt.subplots(l_plot_grid, w_plot_grid, squeeze=False)
-    fig.set_size_inches(18, 14)
     fig.suptitle('Predictions on {} sets of alpha'.format(len(trajectories)), y=0.02)
 
     for i, sample in enumerate(trajectories):
@@ -45,14 +43,14 @@ def forecast(model_path, truth_path, save_fig=False):
         x0 = trajectory[0]
         axes_x = i % l_plot_grid
         axes_y = int(i / l_plot_grid)
-        axes[axes_x][axes_y].set_title(alpha, wrap=True)
+        # axes[axes_x][axes_y].set_title(alpha, wrap=True)
         prediction = np.array(test(model, alpha, x0, len(trajectory) - 1))
         trajectory = np.array(trajectory)
 
         for j in range(out_dim):
             color = scalar_map.to_rgba(j)
-            axes[axes_x][axes_y].plot(trajectory[:, j].transpose(), color=color, linewidth=4)
-            axes[axes_x][axes_y].plot(prediction[:, j].transpose(), ':', color=color, markersize=3, linewidth=4)
+            axes[axes_x][axes_y].plot(trajectory[:, j].transpose(), color=color)
+            axes[axes_x][axes_y].plot(prediction[:, j].transpose(), marker='o', color=color, markersize=3)
 
     if save_fig:
         fig = 'prediction_{}.png'.format(time.strftime("%H:%M:%S", time.localtime()))
@@ -67,6 +65,10 @@ if __name__ == '__main__':
                         default='results/NS_x3a5/RSResNet_138_7_2.pth')
     parser.add_argument("--dataset", "-d", help="Test set",
                         default='dataset/truth_x3a5_20_1.pkl')
+    parser.add_argument("--loss_path", help="Path of result.json")
     args = parser.parse_args()
 
-    forecast(model_path=args.model, truth_path=args.dataset, save_fig=args.save)
+    # forecast(model_path=args.model, truth_path=args.dataset, save_fig=args.save)
+    loss = utils.analysis.get_loss_from_ray(args.loss_path)
+    plt.plot(loss)
+    plt.show()

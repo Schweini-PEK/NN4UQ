@@ -1,10 +1,4 @@
-import visdom
-import pickle
-import models
 import numpy as np
-import time
-import utils.kits
-from trainable import test
 
 
 def get_loss_from_ray(path):
@@ -32,60 +26,3 @@ def plot_truth(lengths, trajectories, viz):
                  win=win, name='truth',
                  opts=dict(title=win, legend=['truth'], showlegend=True))
 
-
-def predict_trajectories(lengths, alphas, model, viz, name):
-    prediction = []
-
-    for i in range(len(lengths)):
-        start_time = time.time()
-        prediction = test(model, alphas[i], viz, win=str(i), name=name, length=lengths[i], dropout=False)
-        print('{} finished predicting in {}'.format(name, time.time() - start_time))
-        timeline = np.arange(lengths[i] + 1)
-        win = str(i)
-
-        viz.line(X=timeline, Y=prediction,
-                 win=win, name=name,
-                 update='insert'
-                 )
-
-    return prediction
-
-
-def get_truth(truth_path='dataset/truth_x1a5.pkl'):
-    with open(truth_path, 'rb') as f:
-        lengths, alphas, trajectories = pickle.load(f)
-
-    return lengths, alphas, trajectories
-
-
-def plot(lengths, alphas, trajectories, models_path, truth=True):
-    viz = visdom.Visdom()
-
-    # plot truth
-    if truth:
-        plot_truth(lengths, trajectories, viz)
-
-    # Iter the models
-    for model_path in models_path:
-        model, name = utils.kits.load_model_from_path(model_path)
-        # model.load(model_path)
-        prediction = predict_trajectories(lengths, alphas, model, viz, name)
-
-
-def predict_values(n_evals, length):
-    samples = []
-    viz = visdom.Visdom
-    model = models.RSResNet(h_dim=16, n_h_layers=5, k=2, block=models.BNResBlock)
-    model.load('GP_results/16_5_2.pth')
-
-    for _ in range(n_evals):
-        alpha1 = np.random.uniform(40, 50)
-        alpha2 = np.random.uniform(1, 10)
-        alpha3 = np.random.uniform(0.2, 0.4)
-        alpha4 = np.random.uniform(0.75, 0.95)
-        alpha5 = np.random.uniform(0.01, 0.05)
-        alpha = [alpha1, alpha2, alpha3, alpha4, alpha5]
-        result = predict_trajectories([length], [alpha], model, viz, 'whatever')[length - 1]
-        samples.append([alpha1, alpha2, alpha3, alpha4, alpha5, result])
-
-    utils.kits.rows2csv('output/5000.csv', samples)
