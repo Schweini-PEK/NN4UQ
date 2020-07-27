@@ -22,9 +22,7 @@ def train(model, optimizer, train_loader, device=torch.device('cpu')):
             break
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
-        # out = model(x.float())
         out = model(x)
-        # loss = criterion(out, y.float())
         loss = criterion(out, y)
         if np.isnan(loss.item()):
             # print('NAN ALERT!')
