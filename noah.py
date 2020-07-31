@@ -35,7 +35,7 @@ def ray_tuning(**kwargs):
     num_gpus = torch.cuda.device_count()
     metric = 'val_loss'
 
-    def train_uq(grid):
+    def trial(grid):
         setup_seed(SEED)
         utils.kits.parse(config, 'tuning', grid)
         cfg = config['tuning']  # Current config
@@ -122,7 +122,7 @@ def ray_tuning(**kwargs):
     else:
         raise NameError('No such optimizing strategy: {}'.format(config['tuning']['strategy']))
 
-    analysis = tune.run(train_uq, name=config['tuning']['name'], search_alg=search_alg, scheduler=scheduler,
+    analysis = tune.run(trial, name=config['tuning']['name'], search_alg=search_alg, scheduler=scheduler,
                         num_samples=config.getint('tuning', 'n_trials'),
                         resources_per_trial={"cpu": 1, "gpu": num_gpus / config.getint('tuning', 'concurrent')})
     dfs = analysis.trial_dataframes
