@@ -7,15 +7,18 @@ class DefaultConfig(object):
     data_path = '/global/home/users/schweini/research/NN4UQ/dataset/data_22600_x3a5.pkl'
     ratio = 0.9
 
-    model = 'RSResNet'
-    use_gpu = True
-    max_concurrent = 6
     n_samples = 2
+    use_gpu = True
     sf = 1  # sample freq
     val_freq = 5
     log_interval = 50
 
-    # Default parameters for tuning
+    # Tuning
+    name_trial = 'debug'
+    model = 'RSResNet'
+    strategy = 'BO'
+    scheduler = 'ASHA'
+    max_concurrent = 6
     h_dim = (4, 15)  # The dimension of hidden layers
     n_h_layers = (2, 6)  # The number of hidden layers
     batch_size = (2, 20)

@@ -1,6 +1,7 @@
 import json
 import math
 import pickle
+import re
 import time
 
 import numpy as np
@@ -35,7 +36,7 @@ def get_loss_from_ray(path):
 def forecast(model_path, truth_path, save_fig=False):
     # torch.manual_seed(6)
 
-    in_dim, out_dim = utils.kits.get_io_dim(truth_path)
+    in_dim, out_dim = get_io_dim(truth_path)
     model, legend = utils.kits.load_model_from_path(model_path, in_dim, out_dim)
 
     try:
@@ -76,3 +77,17 @@ def forecast(model_path, truth_path, save_fig=False):
         fig_name = 'prediction_{}.png'.format(time.strftime("%H:%M:%S", time.localtime()))
         plt.savefig(fig_name, dpi=2000)
     plt.show()
+
+
+def get_io_dim(path):
+    """Get the IO dimensions based on the path (i.e., 'dataset/truth_x3a5.pkl').
+
+    The path must contain the following substring 'x1a1', where the numbers of variables and uncertainty parameters have
+    been pointed out.
+    :param path:
+    :return: The input and output dimensions for the model.
+    """
+    path = path.split('/')[-1]
+    out_dim = int(re.search('x(.*)a', path).group(1))
+    in_dim = out_dim + int(re.search('(?<=a)(\d*)(?=\D)', path).group(1))
+    return in_dim, out_dim
