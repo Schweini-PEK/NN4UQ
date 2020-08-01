@@ -8,7 +8,7 @@ import numpy as np
 from matplotlib import colors
 from matplotlib import pyplot as plt
 
-import utils
+import models
 from trainable import test
 
 
@@ -33,11 +33,35 @@ def get_loss_from_ray(path):
     return losses
 
 
+def load_model_from_path(path, in_dim, out_dim):
+    """Load the PyTorch model based on the path (i.e., 'results/RSResNet_88_4_2.pth').
+
+    :param in_dim: The input dimension of the model, should be equal to |variables| + |uncertainty parameters|
+    :param out_dim: The output dimension of the model, should be equal to |variables|
+    :param path: The path of the model.
+    :return: The PyTorch model and its legend.
+    """
+    name = path.split('/')[-1].split('.')[0]
+    module = name.split('_')[0]
+    model, legend = None, None
+
+    if module == 'RSResNet':
+        nodes, layers, k = [int(i) for i in name.split('_')[1:]]
+        model = getattr(models, module)(h_dim=nodes, n_h_layers=layers, k=k, block=models.BNResBlock,
+                                        in_dim=in_dim, out_dim=out_dim)
+        model.load(path)
+        legend = '{}N{}L{}K'.format(nodes, layers, k)
+
+    else:
+        raise NameError('No such module: {}'.format(module))
+    return model, legend
+
+
 def forecast(model_path, truth_path, save_fig=False):
     # torch.manual_seed(6)
 
     in_dim, out_dim = get_io_dim(truth_path)
-    model, legend = utils.kits.load_model_from_path(model_path, in_dim, out_dim)
+    model, legend = load_model_from_path(model_path, in_dim, out_dim)
 
     try:
         f = open(truth_path, 'rb')

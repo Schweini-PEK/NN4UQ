@@ -15,8 +15,7 @@ class LoadDataset(Dataset):
             self.data = pickle.load(f)
             temp = []
             for i in range(self.__len__()):
-                if i % sample_freq == 0:
-                    temp.append(self.data[i])
+                temp.append(self.data[i])
 
             self.data = temp
             logging.info('{} dataset have been loaded.'.format(self.__len__()))

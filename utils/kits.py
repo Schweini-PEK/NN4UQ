@@ -11,8 +11,6 @@ import numpy as np
 import torch
 from torch import nn
 
-import models
-
 logger = logging.getLogger(__name__)
 
 
@@ -54,30 +52,6 @@ def rows2csv(output_path, rows):
         writer = csv.writer(f)
         for row in rows:
             writer.writerow(row)
-
-
-def load_model_from_path(path, in_dim, out_dim):
-    """Load the PyTorch model based on the path (i.e., 'results/RSResNet_88_4_2.pth').
-
-    :param in_dim: The input dimension of the model, should be equal to |variables| + |uncertainty parameters|
-    :param out_dim: The output dimension of the model, should be equal to |variables|
-    :param path: The path of the model.
-    :return: The PyTorch model and its legend.
-    """
-    name = path.split('/')[-1].split('.')[0]
-    module = name.split('_')[0]
-    model, legend = None, None
-
-    if module == 'RSResNet':
-        nodes, layers, k = [int(i) for i in name.split('_')[1:]]
-        model = getattr(models, module)(h_dim=nodes, n_h_layers=layers, k=k, block=models.BNResBlock,
-                                        in_dim=in_dim, out_dim=out_dim)
-        model.load(path)
-        legend = '{}N{}L{}K'.format(nodes, layers, k)
-
-    else:
-        raise NameError('No such module: {}'.format(module))
-    return model, legend
 
 
 def parse(conf, section, kwargs):
