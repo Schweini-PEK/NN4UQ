@@ -1,11 +1,22 @@
-import pickle
+import argparse
 import csv
-import random
+import pickle
 from os import listdir
 from os.path import join
 
+import torch
 
-def preprocessor(src, trg, test=False):
+
+def preprocessor(src, trg, name, test=False):
+    """Load and save training/test data from dir.
+
+    Get all the csv files from a dir. Typically the names of the files are their alphas.
+    :param src: The dir of data.
+    :param trg: The dir for saving.
+    :param name: Rename the saved file if needed.
+    :param test: True for loading test set.
+    :return: None
+    """
     samples = []
     n_a, n_x = 0, 0
     for f_path in listdir(src):
@@ -18,44 +29,42 @@ def preprocessor(src, trg, test=False):
             if test:
                 sample = []
                 for line in reader:
-                    sample.append(line[1:])
+                    sample.append(list(map(float, line[1:])))
                 samples.append([alpha, sample])
+                n_x = len(sample[0])
 
             else:
-                x_prior = next(reader)[1:]
+                x_prior = list(map(float, next(reader)[1:]))
                 n_x = len(x_prior)
                 for line in reader:
-                    x_future = line[1:]
-                    samples.append([x_prior + alpha, x_future])
-                    x_prior = x_future
+                    try:
+                        x_future = list(map(float, line[1:]))
+                        samples.append([torch.tensor(x_prior + alpha),
+                                        torch.tensor(x_future)])
+                        x_prior = x_future
+                    except ValueError as e:
+                        print('In file {}, check the line: {}'.format(f_path, line))
+                        raise
 
-    if test:
-        print("TODO")
+    if name is None:
+        if test:
+            name = trg + 'NS_truth_x{}a{}.pkl'.format(n_x, n_a)
 
+        else:
+            name = trg + 'data_{}_x{}a{}.pkl'.format(len(samples), n_x, n_a)
     else:
-        path = trg + '/data_{}_x{}a{}.pkl'.format(len(samples), n_x, n_a)
-        with open(path, 'wb') as f_save:
-            pickle.dump(samples, f_save)
-        print('Save data at {}'.format(path))
-
-
-# def re_loader(src, trg, test=False):
+        name = trg + name + '.pkl'
+    with open(name, 'wb') as f_save:
+        pickle.dump(samples, f_save)
+    print('Save {} samples at {}'.format(len(samples), name))
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", "-i", required=True, type=str, help="Input dir")
+    parser.add_argument("--output", "-o", default="dataset/", type=str, help="Output dir")
+    parser.add_argument("--test", "-t", default=False, type=bool, help="Test set or not")
+    parser.add_argument("--name", "-n", default=None, help="File name")
+    args = parser.parse_args()
 
-    dir = "/Users/schweini/Downloads/DataFengzhe"
-    # dir = "/Users/schweini/Downloads/test"
-    # target = 'dataset/data_72000_x3a5.pkl'
-    target = 'dataset'
-
-    # preprocessor(dir, target)
-    f = open('dataset/data_72000_x3a5.pkl', 'rb')
-    data = pickle.load(f)
-    new_data = []
-    for i, d in enumerate(data):
-        # j = random.randint(0, 400)
-        if i % 400 == 177:
-            new_data.append(d)
-
-    print(len(new_data))
+    preprocessor(args.input, args.output, args.name, args.test)

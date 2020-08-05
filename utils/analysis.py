@@ -1,9 +1,14 @@
-import visdom
+import json
+import math
 import pickle
-import models
-import numpy as np
+import re
 import time
-import utils.kits
+
+import numpy as np
+from matplotlib import colors
+from matplotlib import pyplot as plt
+
+import models
 from trainable import test
 
 
@@ -17,75 +22,96 @@ def get_loss_from_ray(path):
     losses = []
     with open(path, 'r') as f:
         for line in f.readlines():
-            loss = float(line.split(',')[0].split(':')[1][1:])
-            losses.append(loss)
+            line_dict = json.loads(line)
+            losses.append(line_dict['val_loss'])
 
+    plt.plot(losses)
+    plt.xlabel('Iterations')
+    plt.ylabel('Loss')
+    plt.title('Validation Loss')
+    plt.show()
     return losses
 
 
-def plot_truth(lengths, trajectories, viz):
-    for i in range(len(lengths)):
-        win = str(i)
-        timeline = np.arange(lengths[i] + 1)
-        trajectories[i].insert(0, 0.0)
-        viz.line(X=timeline, Y=trajectories[i],
-                 win=win, name='truth',
-                 opts=dict(title=win, legend=['truth'], showlegend=True))
+def load_model_from_path(path, in_dim, out_dim):
+    """Load the PyTorch model based on the path (i.e., 'results/RSResNet_88_4_2.pth').
+
+    :param in_dim: The input dimension of the model, should be equal to |variables| + |uncertainty parameters|
+    :param out_dim: The output dimension of the model, should be equal to |variables|
+    :param path: The path of the model.
+    :return: The PyTorch model and its legend.
+    """
+    name = path.split('/')[-1].split('.')[0]
+    module = name.split('_')[0]
+    model, legend = None, None
+
+    if module == 'RSResNet':
+        nodes, layers, k = [int(i) for i in name.split('_')[1:]]
+        model = getattr(models, module)(h_dim=nodes, n_h_layers=layers, k=k, block=models.BNResBlock,
+                                        in_dim=in_dim, out_dim=out_dim)
+        model.load(path)
+        legend = '{}N{}L{}K'.format(nodes, layers, k)
+
+    else:
+        raise NameError('No such module: {}'.format(module))
+    return model, legend
 
 
-def predict_trajectories(lengths, alphas, model, viz, name):
-    prediction = []
+def forecast(model_path, truth_path, save_fig=False):
+    # torch.manual_seed(6)
 
-    for i in range(len(lengths)):
-        start_time = time.time()
-        prediction = test(model, alphas[i], viz, win=str(i), name=name, length=lengths[i], dropout=False)
-        print('{} finished predicting in {}'.format(name, time.time() - start_time))
-        timeline = np.arange(lengths[i] + 1)
-        win = str(i)
+    in_dim, out_dim = get_io_dim(truth_path)
+    model, legend = load_model_from_path(model_path, in_dim, out_dim)
 
-        viz.line(X=timeline, Y=prediction,
-                 win=win, name=name,
-                 update='insert'
-                 )
+    try:
+        f = open(truth_path, 'rb')
+    except FileNotFoundError:
+        raise FileNotFoundError('No such file: {}'.format(truth_path))
 
-    return prediction
+    trajectories = pickle.load(f)
+    l_plot_grid = math.ceil(math.sqrt(len(trajectories)))
+    w_plot_grid = math.ceil(len(trajectories) / l_plot_grid)
+
+    c_map = plt.cm.get_cmap('gist_rainbow')
+    c_norm = colors.Normalize(vmin=0, vmax=out_dim - 1)
+    scalar_map = plt.cm.ScalarMappable(norm=c_norm, cmap=c_map)
+
+    fig, axes = plt.subplots(l_plot_grid, w_plot_grid, squeeze=False, sharex=True, sharey=True)
+    fig.text(0.5, 0.04, 'Time', ha='center')
+    fig.text(0.04, 0.5, 'Quantities of Interest', va='center', rotation='vertical')
+    fig.suptitle('Predictions on {} sets of alpha'.format(len(trajectories)), y=0.02)
+
+    for i, sample in enumerate(trajectories):
+        alpha, trajectory = sample
+        x0 = trajectory[0]
+        axes_x = i % l_plot_grid
+        axes_y = int(i / l_plot_grid)
+        # axes[axes_x][axes_y].set_title(i, wrap=True)
+        start = time.time()
+        prediction = np.array(test(model, alpha, x0, len(trajectory) - 1))
+        print(time.time() - start)
+        trajectory = np.array(trajectory)
+
+        for j in range(out_dim):
+            color = scalar_map.to_rgba(j)
+            axes[axes_x][axes_y].plot(trajectory[:, j].transpose(), color=color)
+            axes[axes_x][axes_y].plot(prediction[:, j].transpose(), marker='o', color=color, markersize=3)
+
+    if save_fig:
+        fig_name = 'prediction_{}.png'.format(time.strftime("%H:%M:%S", time.localtime()))
+        plt.savefig(fig_name, dpi=2000)
+    plt.show()
 
 
-def get_truth(truth_path='dataset/truth_x1a5.pkl'):
-    with open(truth_path, 'rb') as f:
-        lengths, alphas, trajectories = pickle.load(f)
+def get_io_dim(path):
+    """Get the IO dimensions based on the path (i.e., 'dataset/truth_x3a5.pkl').
 
-    return lengths, alphas, trajectories
-
-
-def plot(lengths, alphas, trajectories, models_path, truth=True):
-    viz = visdom.Visdom()
-
-    # plot truth
-    if truth:
-        plot_truth(lengths, trajectories, viz)
-
-    # Iter the models
-    for model_path in models_path:
-        model, name = utils.kits.load_model_from_path(model_path)
-        # model.load(model_path)
-        prediction = predict_trajectories(lengths, alphas, model, viz, name)
-
-
-def predict_values(n_evals, length):
-    samples = []
-    viz = visdom.Visdom
-    model = models.RSResNet(h_dim=16, n_h_layers=5, k=2, block=models.BNResBlock)
-    model.load('GP_results/16_5_2.pth')
-
-    for _ in range(n_evals):
-        alpha1 = np.random.uniform(40, 50)
-        alpha2 = np.random.uniform(1, 10)
-        alpha3 = np.random.uniform(0.2, 0.4)
-        alpha4 = np.random.uniform(0.75, 0.95)
-        alpha5 = np.random.uniform(0.01, 0.05)
-        alpha = [alpha1, alpha2, alpha3, alpha4, alpha5]
-        result = predict_trajectories([length], [alpha], model, viz, 'whatever')[length - 1]
-        samples.append([alpha1, alpha2, alpha3, alpha4, alpha5, result])
-
-    utils.kits.rows2csv('output/5000.csv', samples)
+    The path must contain the following substring 'x1a1', where the numbers of variables and uncertainty parameters have
+    been pointed out.
+    :param path:
+    :return: The input and output dimensions for the model.
+    """
+    path = path.split('/')[-1]
+    out_dim = int(re.search('x(.*)a', path).group(1))
+    in_dim = out_dim + int(re.search('(?<=a)(\d*)(?=\D)', path).group(1))
+    return in_dim, out_dim

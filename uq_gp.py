@@ -2,7 +2,7 @@ import logging
 
 import torch
 import torch.optim as optim
-from skopt import gp_minimize, gbrt_minimize
+from skopt import gbrt_minimize
 from skopt.space import Real, Integer
 from skopt.utils import use_named_args
 
@@ -23,7 +23,6 @@ dim_epochs = Integer(low=400, high=700, prior='log-uniform', name='epochs')
 dim_blocks = Integer(low=2, high=4, name='blocks')
 dim_num_dense_layers = Integer(low=3, high=8, name='num_layers')
 dim_num_dense_nodes = Integer(low=4, high=20, name='num_nodes')
-
 
 dimensions = [dim_learning_rate,
               dim_batch_size,
@@ -76,9 +75,9 @@ def loss_func(learning_rate, batch_size, epochs, blocks, num_layers, num_nodes):
 
 if __name__ == '__main__':
     gp_result = gbrt_minimize(func=loss_func,
-                            dimensions=dimensions,
-                            n_calls=11,
-                            noise=1e-8,
-                            n_jobs=-1,
-                            acq_func="EI",
-                            x0=default_parameters)
+                              dimensions=dimensions,
+                              n_calls=11,
+                              # noise=1e-8,
+                              n_jobs=-1,
+                              acq_func="EI",
+                              x0=default_parameters)

@@ -4,7 +4,7 @@ from torch import nn
 
 
 class AttnDecoderRNN(nn.Module):
-    def __init__(self, hidden_size, output_size, dropout_p=0.1, max_length=MAX_LENGTH):
+    def __init__(self, hidden_size, output_size, dropout_p=0.1, max_length=100):
         super(AttnDecoderRNN, self).__init__()
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -38,3 +38,18 @@ class AttnDecoderRNN(nn.Module):
 
     def init_hidden(self):
         return torch.zeros(1, 1, self.hidden_size)
+
+
+class AttnPDE(nn.Module):
+    """
+    The input size should be [batch_size, in_channels(n_x), len(time_steps)]
+
+    """
+
+    def __init__(self, window, in_channels, out_channels, kernel_size):
+        super(AttnPDE, self).__init__()
+        self.w = window
+
+        self.dense1 = nn.Linear(in_channels, 20)
+        self.cnn = nn.Conv1d(in_channels, out_channels, kernel_size)
+        self.lstm = nn.LSTM(input_size=in_channels, hidden_size=10, batch_first=True)

@@ -1,9 +1,10 @@
 import logging
-import time
+
 import numpy as np
 import torch
 from torch import nn
 from torchnet import meter
+
 import utils
 
 logger = logging.getLogger(__name__)
@@ -21,15 +22,14 @@ def train(model, optimizer, train_loader, device=torch.device('cpu')):
             break
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
-        out = model(x.float())
-        loss = criterion(out, y.float())
+        out = model(x)
+        loss = criterion(out, y)
         if np.isnan(loss.item()):
-            print('NAN ALERT!')
+            # print('NAN ALERT!')
+            pass
         loss.backward()  # get gradients to parameters
         loss_meter.add(loss.data.cpu())
         optimizer.step()  # update parameters
-
-    # return float(loss_meter.value()[0])
 
 
 def val(model, val_loader, device=torch.device('cpu'), dropout=False):
