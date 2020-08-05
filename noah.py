@@ -1,5 +1,7 @@
 import configparser
 import logging
+import os
+import time
 
 import fire
 import ray
@@ -26,12 +28,13 @@ SEED = 6
 
 
 def ray_tuning(**kwargs):
+    root = os.path.dirname(os.path.realpath(__file__)) + '/'
     config = configparser.ConfigParser()
-    config.read('configure.ini')
+    config.read(root + 'configure.ini')
     utils.kits.parse(config, 'tuning', kwargs)
     ray.init(num_cpus=4)
-
-    # time.sleep(99)
+    if config.getboolean('tuning', 'sleep'):
+        time.sleep(99)
     num_gpus = torch.cuda.device_count()
     metric = 'val_loss'
 
@@ -40,7 +43,7 @@ def ray_tuning(**kwargs):
         utils.kits.parse(config, 'tuning', grid)
         cfg = config['tuning']  # Current config
 
-        data = utils.data.loader.LoadDataset(path=cfg['path'])
+        data = utils.data.loader.LoadDataset(path=root + cfg['path'])
         n_nodes = int(float(cfg['n_nodes']))
         n_layers = int(float(cfg['n_layers']))
         k = int(float(cfg['k']))
@@ -117,7 +120,7 @@ def ray_tuning(**kwargs):
         )
 
     elif config['tuning']['strategy'] == 'hyperopt':
-        search_space = {"lr": hp.uniform("lr", 0.001, 0.0099), "bs": hp.randint("bs", 4, 48),
+        search_space = {"lr": hp.uniform("lr", 0.001, 0.0099),
                         "n_layers": hp.randint("n_layers", 3, 9),
                         "n_nodes": hp.randint("n_nodes", 40, 200), "k": hp.randint("k", 2, 10)}
         search_alg = HyperOptSearch(search_space, metric="val_loss", max_concurrent=20, mode='min')
