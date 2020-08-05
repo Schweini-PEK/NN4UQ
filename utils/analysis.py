@@ -79,7 +79,7 @@ def forecast(model_path, truth_path, save_fig=False):
     fig, axes = plt.subplots(l_plot_grid, w_plot_grid, squeeze=False, sharex=True, sharey=True)
     fig.text(0.5, 0.04, 'Time', ha='center')
     fig.text(0.04, 0.5, 'Quantities of Interest', va='center', rotation='vertical')
-    # fig.suptitle('Predictions on {} sets of alpha'.format(len(trajectories)), y=0.02)
+    fig.suptitle('Predictions on {} sets of alpha'.format(len(trajectories)), y=0.02)
 
     for i, sample in enumerate(trajectories):
         alpha, trajectory = sample
