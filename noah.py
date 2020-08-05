@@ -112,7 +112,7 @@ def ray_tuning(**kwargs):
         raise NameError('No such tuning scheduler: {}'.format(config['tuning']['scheduler']))
 
     if config['tuning']['strategy'] == 'BO':
-        search_space = {'lr': (0.0001, 0.008), 'bs': (4, 64), 'n_layers': (3, 8.99),
+        search_space = {'lr': (0.0001, 0.008), 'n_layers': (3, 8.99),
                         'n_nodes': (4, 30.99), 'k': (2, 4.99)}
         search_alg = BayesOptSearch(
             space=search_space, metric='val_loss', mode='min', max_concurrent=20,
@@ -133,6 +133,7 @@ def ray_tuning(**kwargs):
                         resources_per_trial={"cpu": 1, "gpu": num_gpus / config.getint('tuning', 'concurrent')})
     dfs = analysis.trial_dataframes
     logger.info("Best hyperparameter: {}".format(analysis.get_best_config(metric='val_loss', mode='min')))
+    print("Best hyperparameter: {}".format(analysis.get_best_config(metric='val_loss', mode='min')))
 
     # Plot by epoch
     ax = None  # This plots everything on the same plot
