@@ -1,9 +1,12 @@
 import argparse
+import logging
 
 import matplotlib.pyplot as plt
 
 from utils import analysis
 from utils import kits
+
+logging.basicConfig(level=logging.INFO)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -11,7 +14,7 @@ if __name__ == '__main__':
     parser.add_argument("--model", "-m", help="Model for predicting")
     parser.add_argument("--dataset", "-d", default='dataset/NS_truth_x3a5.pkl', help="Test set")
     parser.add_argument("--loss_path", help="Path of Ray json file")
-    parser.add_argument("--model_dir", default='results/compare1', help="Path of Ray json file")
+    parser.add_argument("--model_dir", default='results/compare', help="Path of Ray json file")
     parser.add_argument("--loss_dir", default='results/losses1', help="Path of Ray json file")
     args = parser.parse_args()
 
@@ -28,6 +31,6 @@ if __name__ == '__main__':
         ax.plot(loss, color=color, label=pth.split('/')[-1].split('.')[0])
     leg = ax.legend()
     plt.xlabel('Iterations')
-    plt.ylabel('Loss')
+    plt.ylabel('L1 Loss')
     plt.title('Validation Losses Comparison')
     plt.show()

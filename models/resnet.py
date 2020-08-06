@@ -80,7 +80,6 @@ class RSResNet(BasicModule):
         self.layer = self._make_layer(block)
 
     def _make_layer(self, block):
-        print(block)
         layers = [block(self.in_dim, self.h_dim, self.out_dim, self.n_h_layers)]
         in_dim = self.out_dim
         for _ in range(1, self.k):

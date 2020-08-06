@@ -1,4 +1,5 @@
 import json
+import logging
 import math
 import pickle
 import re
@@ -10,6 +11,8 @@ from matplotlib import pyplot as plt
 import models
 from trainable import test
 from utils import kits
+
+logger = logging.getLogger(__name__)
 
 
 def get_loss_from_ray(path):
@@ -38,18 +41,11 @@ def load_model_from_path(path, in_dim, out_dim):
     """
     name = path.split('/')[-1].split('.')[0]
     module = name.split('_')[0]
-    print(module)
-    model, caption = None, None
 
     if module in {'NewRSResNet', 'RTResNet', 'RSResNet'}:
         nodes, layers, k = [int(i) for i in name.split('_')[1:]]
-        model = getattr(models, module)(h_dim=nodes, n_h_layers=layers, k=k, in_dim=in_dim, out_dim=out_dim, )
-        # block=models.NewResBlock)
+        model = getattr(models, module)(h_dim=nodes, n_h_layers=layers, k=k, in_dim=in_dim, out_dim=out_dim)
         caption = '{}{}N{}L{}K'.format(module, nodes, layers, k)
-
-    elif module == 'RSResNet':
-        nodes, layers, k = [int(i) for i in name.split('_')[1:]]
-        model = models.RSResNet(in_dim=in_dim, out_dim=out_dim, k=k, n_h_layers=layers, h_dim=nodes)
 
     else:
         raise NameError('No such module: {}'.format(module))
@@ -67,7 +63,7 @@ def forecast(model_path, truth_path, save_fig=False):
     try:
         f = open(truth_path, 'rb')
     except FileNotFoundError:
-        raise FileNotFoundError('No such file: {}'.format(truth_path))
+        raise ('No such file: {}'.format(truth_path))
 
     trajectories = pickle.load(f)
     l_plot_grid = math.ceil(math.sqrt(len(trajectories)))
@@ -78,16 +74,19 @@ def forecast(model_path, truth_path, save_fig=False):
     fig.text(0.04, 0.5, 'Quantities of Interest', va='center', rotation='vertical')
     fig.suptitle('Predictions with model {}'.format(name), y=0.02)
 
+    e_t, t_t = [], []
     for i, sample in enumerate(trajectories):
         alpha, trajectory = sample
         x0 = trajectory[0]
         axes_x = i % l_plot_grid
         axes_y = int(i / l_plot_grid)
         # axes[axes_x][axes_y].set_title(i, wrap=True)
-        start = time.time()
+        t0 = time.time()
         prediction = np.array(test(model, alpha, x0, len(trajectory) - 1))
-        print(time.time() - start)
+        t_t.append(time.time() - t0)
+
         trajectory = np.array(trajectory)
+        e_t.append(np.linalg.norm(prediction[1:] - trajectory[1:], 2) / (len(trajectory) - 1))
 
         for j in range(out_dim):
             color = scalar_map.to_rgba(j)
@@ -98,6 +97,12 @@ def forecast(model_path, truth_path, save_fig=False):
         fig_name = 'prediction_{}.png'.format(time.strftime("%H:%M:%S", time.localtime()))
         plt.savefig(fig_name, dpi=2000)
     plt.show()
+
+    e = sum(e_t) / len(e_t)
+    t = sum(t_t[1:]) / len(t_t[1:])
+    logger.info('With model {}:'.format(name))
+    logger.info('Average time consumption: {}s'.format(t))
+    logger.info('Mean relative validation error: {}'.format(e))
 
 
 def get_io_dim(path):

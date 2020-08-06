@@ -53,21 +53,10 @@ def ray_tuning(**kwargs):
 
         in_dim, out_dim = len(data[0][0]), len(data[0][1])
 
-        if cfg['model'] == 'RSResNet':
-            model = models.RSResNet(in_dim=in_dim, out_dim=out_dim, k=k, n_h_layers=n_layers, h_dim=n_nodes)
-
-            name = 'RSResNet_' + str(n_nodes) + '_' + str(n_layers) + '_' + str(k) + '.pth'
-
-        elif cfg['model'] == 'RTResNet':
-            model = models.RTResNet(in_dim=in_dim, out_dim=out_dim, k=k, n_h_layers=n_layers, h_dim=n_nodes)
-
-            name = 'RTResNet_' + str(n_nodes) + '_' + str(n_layers) + '_' + str(k) + '.pth'
-
-        elif cfg['model'] == 'NewRSResNet':
-            model = models.NewRSResNet(in_dim=in_dim, out_dim=out_dim, k=k, n_h_layers=n_layers, h_dim=n_nodes,
-                                       block=models.NewResBlock)
-
-            name = 'NewRSResNet_' + str(n_nodes) + '_' + str(n_layers) + '_' + str(k) + '.pth'
+        if cfg['model'] in {'RSResNet', 'RTResNet', 'NewRSResNet'}:
+            model = getattr(models, cfg['model'])(in_dim=in_dim, out_dim=out_dim,
+                                                  k=k, n_h_layers=n_layers, h_dim=n_nodes)
+            name = cfg['model'] + '_' + str(n_nodes) + '_' + str(n_layers) + '_' + str(k) + '.pth'
 
         elif cfg['model'] == 'MLP':
             model = models.DynamicMLP(in_dim=in_dim, out_dim=out_dim, n_hidden=n_layers, h_dim=n_nodes)
@@ -91,6 +80,7 @@ def ray_tuning(**kwargs):
         def log_training_results(trainer):
             evaluator.run(train_loader)
             metrics = evaluator.state.metrics
+            model.save(path=name)
 
         @trainer.on(Events.EPOCH_COMPLETED)
         def log_validation_results(trainer):
