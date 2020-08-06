@@ -6,9 +6,12 @@ import csv
 import logging
 import os
 import random
+from os.path import join, isfile
 
 import numpy as np
 import torch
+from matplotlib import colors
+from matplotlib import pyplot as plt
 from torch import nn
 
 logger = logging.getLogger(__name__)
@@ -26,7 +29,7 @@ def apply_dropout(m):
 
 
 def get_pth_from_dir(root):
-    models_path = [root + f for f in os.listdir(root) if os.path.isfile(os.path.join(root, f))]
+    models_path = [join(root, f) for f in os.listdir(root) if isfile(join(root, f))]
     return models_path
 
 
@@ -52,6 +55,13 @@ def rows2csv(output_path, rows):
         writer = csv.writer(f)
         for row in rows:
             writer.writerow(row)
+
+
+def color_wheel(num, theme='gist_rainbow'):
+    c_map = plt.cm.get_cmap(theme)
+    c_norm = colors.Normalize(vmin=0, vmax=num - 1)
+    scalar_map = plt.cm.ScalarMappable(norm=c_norm, cmap=c_map)
+    return scalar_map
 
 
 def parse(conf, section, kwargs):

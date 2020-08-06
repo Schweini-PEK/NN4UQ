@@ -80,6 +80,7 @@ class RSResNet(BasicModule):
         self.layer = self._make_layer(block)
 
     def _make_layer(self, block):
+        print(block)
         layers = [block(self.in_dim, self.h_dim, self.out_dim, self.n_h_layers)]
         in_dim = self.out_dim
         for _ in range(1, self.k):
@@ -114,10 +115,10 @@ class RTResNet(BasicModule):
 
 
 class NewRSResNet(RSResNet):
-    def _make_layer(self, block):
-        layers = [block(self.in_dim, self.h_dim, self.out_dim, self.n_h_layers)]
+    def _make_layer(self, block=NewResBlock):
+        layers = [NewResBlock(self.in_dim, self.h_dim, self.out_dim, self.n_h_layers)]
         for _ in range(1, self.k):
-            layers.append(block(self.in_dim, self.h_dim, self.out_dim, self.n_h_layers))
+            layers.append(NewResBlock(self.in_dim, self.h_dim, self.out_dim, self.n_h_layers))
 
         return nn.Sequential(*layers)
 

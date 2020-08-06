@@ -106,7 +106,7 @@ def ray_tuning(**kwargs):
         scheduler = ASHAScheduler(metric=metric, mode='min', max_t=1000, grace_period=3)
 
     elif config['tuning']['scheduler'] == 'AHB':
-        scheduler = AsyncHyperBandScheduler(metric="val_loss", mode="min", max_t=1000, grace_period=3)
+        scheduler = AsyncHyperBandScheduler(metric="val_loss", mode="min", max_t=1000, grace_period=50)
 
     else:
         raise NameError('No such tuning scheduler: {}'.format(config['tuning']['scheduler']))
@@ -115,7 +115,7 @@ def ray_tuning(**kwargs):
         search_space = {'lr': (0.0001, 0.008), 'n_layers': (3, 8.99),
                         'n_nodes': (4, 30.99), 'k': (2, 4.99)}
         search_alg = BayesOptSearch(
-            space=search_space, metric='val_loss', mode='min', max_concurrent=20,
+            space=search_space, metric='val_loss', mode='min', max_concurrent=24,
             utility_kwargs={"kind": "ucb", "kappa": 2.5, "xi": 0.0}
         )
 
@@ -123,7 +123,7 @@ def ray_tuning(**kwargs):
         search_space = {"lr": hp.uniform("lr", 0.001, 0.0099),
                         "n_layers": hp.randint("n_layers", 3, 9),
                         "n_nodes": hp.randint("n_nodes", 40, 200), "k": hp.randint("k", 2, 10)}
-        search_alg = HyperOptSearch(search_space, metric="val_loss", max_concurrent=20, mode='min')
+        search_alg = HyperOptSearch(search_space, metric="val_loss", max_concurrent=24, mode='min')
 
     else:
         raise NameError('No such optimizing strategy: {}'.format(config['tuning']['strategy']))
@@ -132,7 +132,6 @@ def ray_tuning(**kwargs):
                         num_samples=config.getint('tuning', 'n_trials'),
                         resources_per_trial={"cpu": 1, "gpu": num_gpus / config.getint('tuning', 'concurrent')})
     dfs = analysis.trial_dataframes
-    logger.info("Best hyperparameter: {}".format(analysis.get_best_config(metric='val_loss', mode='min')))
     print("Best hyperparameter: {}".format(analysis.get_best_config(metric='val_loss', mode='min')))
 
     # Plot by epoch

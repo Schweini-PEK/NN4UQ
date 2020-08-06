@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from torchnet import meter
 
-import utils
+import utils.kits
 
 logger = logging.getLogger(__name__)
 
