@@ -86,7 +86,8 @@ def forecast(model_path, truth_path, save_fig=False):
         t_t.append(time.time() - t0)
 
         trajectory = np.array(trajectory)
-        e_t.append(np.linalg.norm(prediction[1:] - trajectory[1:], 2) / (len(trajectory) - 1))
+        e_t.append((np.linalg.norm(prediction[1:] - trajectory[1:], 2) / (np.linalg.norm(trajectory[1:], 2)))
+                   / (len(trajectory) - 1))
 
         for j in range(out_dim):
             color = scalar_map.to_rgba(j)
