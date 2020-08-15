@@ -12,6 +12,7 @@
       <w>nvidia</w>
       <w>pretrained</w>
       <w>resnet</w>
+      <w>softmax</w>
       <w>testset</w>
     </words>
   </dictionary>
