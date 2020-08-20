@@ -12,7 +12,7 @@ import torch
 logger = logging.getLogger(__name__)
 
 
-def processor(src, trg, name, type, test=False):
+def processor(src, trg, name, f_type, test=False):
     """Load and save training/test data from dir.
 
     Get all the csv files from a dir. Typically the names of the files are their alphas.
@@ -24,7 +24,7 @@ def processor(src, trg, name, type, test=False):
     """
     samples = []
     n_a, n_x = 0, 0
-    if type == 'csv':
+    if f_type == 'csv':
         for f_path in listdir(src):
             alpha = list(map(float, f_path[:-4].split('_')[2::2]))
             n_a = len(alpha)
@@ -43,16 +43,12 @@ def processor(src, trg, name, type, test=False):
                     x_past = list(map(float, next(reader)[1:]))
                     n_x = len(x_past)
                     for line in reader:
-                        try:
-                            x_future = list(map(float, line[1:]))
-                            samples.append([torch.tensor(x_past + alpha),
-                                            torch.tensor(x_future)])
-                            x_past = x_future
-                        except ValueError as e:
-                            print('In file {}, check the line: {}'.format(f_path, line))
-                            raise
+                        x_future = list(map(float, line[1:]))
+                        samples.append([torch.tensor(x_past + alpha),
+                                        torch.tensor(x_future)])
+                        x_past = x_future
 
-    elif type == 'mat':
+    elif f_type == 'mat':
         if not test:
             data = scipy.io.loadmat(src)
             x_raw = data['Xdata']
@@ -60,7 +56,9 @@ def processor(src, trg, name, type, test=False):
             index = list(range(len(x_raw)))
             random.shuffle(index)
             for i in index[:1000]:
-                samples.append([torch.tensor(x_raw[i]), torch.tensor(y_raw[i])])
+                x = list(map(float, x_raw[i].tolist()))
+                y = list(map(float, y_raw[i].tolist()))
+                samples.append([torch.tensor(x), torch.tensor(y)])
 
             n_x = len(y_raw[0])
             n_a = len(x_raw[0]) - n_x

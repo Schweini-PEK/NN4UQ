@@ -6,7 +6,6 @@ import time
 import fire
 import ray
 import torch
-import torch.optim as optim
 from hyperopt import hp
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
 from ignite.handlers import TerminateOnNan
@@ -16,6 +15,7 @@ from ray.tune.schedulers import ASHAScheduler, AsyncHyperBandScheduler
 from ray.tune.suggest.bayesopt import BayesOptSearch
 from ray.tune.suggest.hyperopt import HyperOptSearch
 from torch import nn
+from torch import optim
 
 import models
 import utils
@@ -43,14 +43,13 @@ def ray_tuning(**kwargs):
         utils.kits.parse(config, 'tuning', grid)
         cfg = config['tuning']  # Current config
 
-        data = utils.data.loader.LoadDataset(path=root + cfg['path'])
         n_nodes = int(float(cfg['n_nodes']))
         n_layers = int(float(cfg['n_layers']))
         k = int(float(cfg['k']))
         bs = int(float(cfg['bs']))
 
+        data = utils.data.loader.LoadDataset(path=root + cfg['path'])
         train_loader, val_loader = utils.data.loader.get_data_loaders(data, batch_size=bs, num_workers=4)
-
         in_dim, out_dim = len(data[0][0]), len(data[0][1])
 
         if cfg['model'] in {'RSResNet', 'RTResNet', 'NewRSResNet'}:
@@ -70,7 +69,6 @@ def ray_tuning(**kwargs):
             lr=grid["lr"])
         criterion = nn.L1Loss()  # MAE Loss
         trainer = create_supervised_trainer(model, optimizer, criterion)
-
         val_metrics = {
             "L1": Loss(criterion)
         }
@@ -96,7 +94,7 @@ def ray_tuning(**kwargs):
         scheduler = ASHAScheduler(metric=metric, mode='min', max_t=1000, grace_period=3)
 
     elif config['tuning']['scheduler'] == 'AHB':
-        scheduler = AsyncHyperBandScheduler(metric="val_loss", mode="min", max_t=1000, grace_period=50)
+        scheduler = AsyncHyperBandScheduler(metric=metric, mode="min", max_t=1000, grace_period=50)
 
     else:
         raise NameError('No such tuning scheduler: {}'.format(config['tuning']['scheduler']))
@@ -105,7 +103,7 @@ def ray_tuning(**kwargs):
         search_space = {'lr': (0.0001, 0.008), 'n_layers': (3, 8.99),
                         'n_nodes': (4, 30.99), 'k': (2, 4.99)}
         search_alg = BayesOptSearch(
-            space=search_space, metric='val_loss', mode='min', max_concurrent=24,
+            space=search_space, metric=metric, mode='min', max_concurrent=24,
             utility_kwargs={"kind": "ucb", "kappa": 2.5, "xi": 0.0}
         )
 
@@ -113,7 +111,7 @@ def ray_tuning(**kwargs):
         search_space = {"lr": hp.uniform("lr", 0.001, 0.0099),
                         "n_layers": hp.randint("n_layers", 3, 9),
                         "n_nodes": hp.randint("n_nodes", 40, 200), "k": hp.randint("k", 2, 10)}
-        search_alg = HyperOptSearch(search_space, metric="val_loss", max_concurrent=24, mode='min')
+        search_alg = HyperOptSearch(search_space, metric=metric, max_concurrent=24, mode='min')
 
     else:
         raise NameError('No such optimizing strategy: {}'.format(config['tuning']['strategy']))
@@ -122,7 +120,7 @@ def ray_tuning(**kwargs):
                         num_samples=config.getint('tuning', 'n_trials'),
                         resources_per_trial={"cpu": 1, "gpu": num_gpus / config.getint('tuning', 'concurrent')})
     dfs = analysis.trial_dataframes
-    print("Best hyperparameter: {}".format(analysis.get_best_config(metric='val_loss', mode='min')))
+    print("Best hyperparameter: {}".format(analysis.get_best_config(metric=metric, mode='min')))
 
     # Plot by epoch
     ax = None  # This plots everything on the same plot

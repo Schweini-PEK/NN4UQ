@@ -24,7 +24,10 @@ class BasicResBlock(BasicModule):
         x = self.layer_dp(x)
         out = self.layer_out(x)
 
-        out += identity[:self.out_dim] if len(identity.size()) == 1 else identity[:, :self.out_dim]
+        if len(identity.size()) == 1:
+            out += identity[:self.out_dim]
+        else:
+            out += identity[:, :self.out_dim]
 
         return out
 
@@ -53,7 +56,7 @@ class BNResBlock(BasicResBlock):
 
 
 class ResNet(BasicModule):
-    def __init__(self, in_dim, h_dim, out_dim, n_h_layers, block=BasicResBlock):
+    def __init__(self, in_dim, h_dim, out_dim, n_h_layers, block=BNResBlock):
         super().__init__()
         self.in_dim = in_dim
         self.h_dim = h_dim
