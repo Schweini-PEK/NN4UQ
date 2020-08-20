@@ -58,9 +58,9 @@ def ray_tuning(**kwargs):
                                                   k=k, n_h_layers=n_layers, h_dim=n_nodes)
             name = cfg['model'] + '_' + str(n_nodes) + '_' + str(n_layers) + '_' + str(k) + '.pth'
 
-        elif cfg['model'] == 'MLP':
-            model = models.DynamicMLP(in_dim=in_dim, out_dim=out_dim, n_hidden=n_layers, h_dim=n_nodes)
-            name = 'MLP_' + str(n_nodes) + '_' + str(n_layers) + '.pth'
+        elif cfg['model'] == 'ResNet':
+            model = getattr(models, cfg['model'])(in_dim=in_dim, out_dim=out_dim, n_h_layers=n_layers, h_dim=n_nodes)
+            name = cfg['model'] + '_' + str(n_nodes) + '_' + str(n_layers) + '.pth'
 
         else:
             raise NameError('No such model: {}'.format(cfg['model']))
