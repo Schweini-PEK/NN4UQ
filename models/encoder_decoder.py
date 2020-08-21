@@ -23,23 +23,23 @@ class EncoderRNN(nn.Module):
         self.gru = nn.GRU(hidden_size, hidden_size)
         self.attn_linear = nn.Linear(in_features=2 * hidden_size + t - 1, out_features=1)
 
-    def forward(self, input_data, hidden):
-        input_weighted = torch.tensor(torch.zeros(input_data.size(0), self.T - 1, self.input_size))
-        input_encoded = torch.tensor(torch.zeros(input_data.size(0), self.T - 1, self.hidden_size))
+    def forward(self, x, hidden):
+        input_weighted = torch.tensor(torch.zeros(x.size(0), self.T - 1, self.input_size))
+        input_encoded = torch.tensor(torch.zeros(x.size(0), self.T - 1, self.hidden_size))
         # hidden, cell: initial states with dimension hidden_size
-        hidden = init_hidden(input_data, self.hidden_size)  # 1 * batch_size * hidden_size
-        cell = init_hidden(input_data, self.hidden_size)
+        hidden = init_hidden(x, self.hidden_size)  # 1 * batch_size * hidden_size
+        cell = init_hidden(x, self.hidden_size)
 
         for i in range(self.t - 1):
             x = torch.cat((hidden.repeat(self.input_size, 1, 1).permute(1, 0, 2),
                            cell.repeat(self.input_size, 1, 1).permute(1, 0, 2),
-                           input_data.permute(0, 2, 1)), dim=2)
+                           x.permute(0, 2, 1)), dim=2)
             # Eqn. 8: Get attention weights
             x = self.attn_linear(x.view(-1, self.hidden_size * 2 + self.T - 1))  # (batch_size * input_size) * 1
             # Eqn. 9: Softmax the attention weights
             attn_weights = F.softmax(x.view(-1, self.input_size), dim=1)  # (batch_size, input_size)
             # Eqn. 10: LSTM
-            weighted_input = torch.mul(attn_weights, input_data[:, i, :])  # (batch_size, input_size)
+            weighted_input = torch.mul(attn_weights, x[:, i, :])  # (batch_size, input_size)
             # Fix the warning about non-contiguous memory
             # see https://discuss.pytorch.org/t/dataparallel-issue-with-flatten-parameter/8282
             self.lstm_layer.flatten_parameters()

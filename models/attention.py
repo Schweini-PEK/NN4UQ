@@ -42,7 +42,7 @@ class AttnDecoderRNN(nn.Module):
 
 class AttnPDE(nn.Module):
     """
-    The input_data size should be [batch_size, in_channels(n_x), len(time_steps)]
+    The x size should be [batch_size, in_channels(n_x), len(time_steps)]
 
     """
 
