@@ -32,7 +32,7 @@ def ray_tuning(**kwargs):
     config = configparser.ConfigParser()
     config.read(root + 'configure.ini')
     utils.kits.parse(config, 'tuning', kwargs)
-    ray.init(num_cpus=4)
+    ray.init(num_cpus=24)
     if config.getboolean('tuning', 'sleep'):
         time.sleep(99)
     num_gpus = torch.cuda.device_count()
@@ -57,22 +57,21 @@ def ray_tuning(**kwargs):
                                                   k=k, n_h_layers=n_layers, h_dim=n_nodes)
             name = cfg['model'] + '_' + str(n_nodes) + '_' + str(n_layers) + '_' + str(k) + '.pth'
 
-        elif cfg['model'] == 'ResNet':
+        elif cfg['model'] in {'ResNet', 'BNResNet'}:
             model = getattr(models, cfg['model'])(in_dim=in_dim, out_dim=out_dim, n_h_layers=n_layers, h_dim=n_nodes)
             name = cfg['model'] + '_' + str(n_nodes) + '_' + str(n_layers) + '.pth'
 
         else:
             raise NameError('No such model: {}'.format(cfg['model']))
 
-        optimizer = optim.SGD(
-            model.parameters(),
-            lr=grid["lr"])
+        optimizer = getattr(optim, cfg['optimizer'])(model.parameters(), lr=float(cfg['lr']))
         criterion = nn.L1Loss()  # MAE Loss
         trainer = create_supervised_trainer(model, optimizer, criterion)
         val_metrics = {
             "L1": Loss(criterion)
         }
         evaluator = create_supervised_evaluator(model, metrics=val_metrics)
+        print(model)
 
         @trainer.on(Events.EPOCH_COMPLETED)
         def log_training_results(trainer):
@@ -118,7 +117,7 @@ def ray_tuning(**kwargs):
 
     analysis = tune.run(trial, name=config['tuning']['name'], search_alg=search_alg, scheduler=scheduler,
                         num_samples=config.getint('tuning', 'n_trials'),
-                        resources_per_trial={"cpu": 1, "gpu": num_gpus / config.getint('tuning', 'concurrent')})
+                        resources_per_trial={"cpu": 2, "gpu": num_gpus / config.getint('tuning', 'concurrent')})
     dfs = analysis.trial_dataframes
     print("Best hyperparameter: {}".format(analysis.get_best_config(metric=metric, mode='min')))
 

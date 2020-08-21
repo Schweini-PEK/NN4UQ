@@ -15,7 +15,7 @@ class BasicResBlock(BasicModule):
         for _ in range(1, n_hidden_layer):
             layers_fc.append(nn.Sequential(nn.Linear(h_dim, h_dim), self.activation()))
         self.layers_fc = nn.Sequential(*layers_fc)
-        self.layer_dp = nn.Dropout(p=0.5)
+        self.layer_dp = nn.Dropout(p=0.25)
         self.layer_out = nn.Linear(h_dim, out_dim)
 
     def forward(self, x):
@@ -51,12 +51,12 @@ class BNResBlock(BasicResBlock):
             layers_fc.append(nn.Sequential(nn.Linear(h_dim, h_dim),
                                            nn.BatchNorm1d(h_dim), self.activation()))
         self.layers_fc = nn.Sequential(*layers_fc)
-        self.layer_dp = nn.Dropout(p=0.5)
+        self.layer_dp = nn.Dropout(p=0.25)
         self.layer_out = nn.Linear(h_dim, out_dim)
 
 
 class ResNet(BasicModule):
-    def __init__(self, in_dim, h_dim, out_dim, n_h_layers, block=BNResBlock):
+    def __init__(self, in_dim, h_dim, out_dim, n_h_layers, block=BasicResBlock):
         super().__init__()
         self.in_dim = in_dim
         self.h_dim = h_dim
@@ -70,6 +70,16 @@ class ResNet(BasicModule):
 
     def forward(self, x):
         return self.layer(x)
+
+
+class BNResNet(ResNet):
+    def __init__(self, in_dim, h_dim, out_dim, n_h_layers, block=BNResBlock):
+        super().__init__(in_dim, h_dim, out_dim, n_h_layers)
+        self.in_dim = in_dim
+        self.h_dim = h_dim
+        self.out_dim = out_dim
+        self.n_h_layers = n_h_layers
+        self.layer = self._make_layer(block)
 
 
 class RSResNet(BasicModule):
