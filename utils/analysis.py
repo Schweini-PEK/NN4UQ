@@ -9,7 +9,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 import models
-from trainable import test
+from trainable import test, test_delta
 from utils import kits
 
 logger = logging.getLogger(__name__)
@@ -47,6 +47,11 @@ def load_model_from_path(path, in_dim, out_dim):
         model = getattr(models, module)(h_dim=nodes, n_h_layers=layers, k=k, in_dim=in_dim, out_dim=out_dim)
         caption = '{}{}N{}L{}K'.format(module, nodes, layers, k)
 
+    elif module in {'ResNet'}:
+        nodes, layers = [int(i) for i in name.split('_')[1:]]
+        model = getattr(models, module)(h_dim=nodes, n_h_layers=layers, in_dim=in_dim, out_dim=out_dim)
+        caption = '{}{}N{}L'.format(module, nodes, layers)
+
     else:
         raise NameError('No such module: {}'.format(module))
 
@@ -54,7 +59,7 @@ def load_model_from_path(path, in_dim, out_dim):
     return model, caption
 
 
-def forecast(model_path, truth_path, save_fig=False):
+def forecast(model_path, truth_path, delta=False, save_fig=False):
     # torch.manual_seed(6)
 
     in_dim, out_dim = get_io_dim(truth_path)
@@ -82,10 +87,13 @@ def forecast(model_path, truth_path, save_fig=False):
         axes_y = int(i / l_plot_grid)
         # axes[axes_x][axes_y].set_title(i, wrap=True)
         t0 = time.time()
-        prediction = np.array(test(model, alpha, x0, len(trajectory) - 1))
+        if delta:
+            prediction = np.array(test_delta(model, alpha, trajectory))
+        else:
+            prediction = np.array(test(model, alpha, x0, len(trajectory) - 1))
         t_t.append(time.time() - t0)
 
-        trajectory = np.array(trajectory)
+        trajectory = np.array(trajectory)[:, :-1]
         e_t.append((np.linalg.norm(prediction[1:] - trajectory[1:], 2) / (np.linalg.norm(trajectory[1:], 2)))
                    / (len(trajectory) - 1))
 
@@ -116,5 +124,5 @@ def get_io_dim(path):
     """
     path = path.split('/')[-1]
     out_dim = int(re.search('x(.*)a', path).group(1))
-    in_dim = out_dim + int(re.search('(?<=a)(\d*)(?=\D)', path).group(1))
+    in_dim = out_dim + int(re.search('(?<=a)(\d+)(?=\D)', path).group(1))
     return in_dim, out_dim

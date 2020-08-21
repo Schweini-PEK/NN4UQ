@@ -6,6 +6,7 @@ import random
 from os import listdir
 from os.path import join
 
+import numpy as np
 import scipy.io
 import torch
 
@@ -49,19 +50,35 @@ def processor(src, trg, name, f_type, test=False):
                         x_past = x_future
 
     elif f_type == 'mat':
-        if not test:
-            data = scipy.io.loadmat(src)
-            x_raw = data['Xdata']
-            y_raw = data['Ydata']
+        data = scipy.io.loadmat(src)
+        x_raw = data['Xdata']
+        y_raw = data['Ydata']
+        n_x = len(y_raw[0])
+        n_a = len(x_raw[0]) - n_x
+        if test:
+            samples = []
+            index_alpha = [0]
+            alpha = x_raw[0][n_x:-1].tolist()
+            for i, x_i in enumerate(x_raw):
+                if x_i[n_x:-1].tolist() != alpha:
+                    index_alpha.append(i)
+                    alpha = x_i[n_x:-1].tolist()
+            index_alpha.append(len(x_raw))
+            for i in range(len(index_alpha)):
+                if i >= 9:
+                    break
+                sample = x_raw[index_alpha[i]:index_alpha[i + 1]]
+                sample = np.concatenate((sample[:, :n_x], np.reshape(sample[:, -1], (-1, 1))), axis=1).astype(float)
+                samples.append([alpha, sample])
+
+        else:
+            samples = []
             index = list(range(len(x_raw)))
             random.shuffle(index)
             for i in index[:1000]:
                 x = list(map(float, x_raw[i].tolist()))
                 y = list(map(float, y_raw[i].tolist()))
                 samples.append([torch.tensor(x), torch.tensor(y)])
-
-            n_x = len(y_raw[0])
-            n_a = len(x_raw[0]) - n_x
 
     if name is None:
         name = src.split('/')[-1].split('.')[0] + '_x{}a{}'.format(n_x, n_a)

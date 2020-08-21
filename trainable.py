@@ -55,22 +55,41 @@ def val(model, val_loader, device=torch.device('cpu'), dropout=False):
     return acc
 
 
-def test(model, alpha, x0, length, dropout=True):
+def test(model, alpha, x_0, length, dropout=True):
     model.eval()
     if dropout:
         # Keep the dropout layers working during prediction.
         # Dropout layers would be automatically turned off by PyTorch.
         model.apply(utils.kits.apply_dropout)
 
-    prediction = [x0]
+    prediction = [x_0]
     alpha = torch.tensor(alpha)
-    x0 = torch.tensor(x0)
-    state = torch.cat((x0, alpha))
+    x_0 = torch.tensor(x_0)
+    state = torch.cat((x_0, alpha))
 
     with torch.no_grad():
         for i in range(length):
             x = model(state.unsqueeze(0)).squeeze(0)
             state = torch.cat((x, alpha))
+            prediction.append(x.tolist())
+
+    return prediction
+
+
+def test_delta(model, alpha, trajectory, dropout=True):
+    model.eval()
+    if dropout:
+        model.apply(utils.kits.apply_dropout)
+
+    x_0 = trajectory[0][:-1]
+    alpha = torch.tensor(alpha)
+    prediction = [x_0]
+    delta = torch.tensor(trajectory[0][-1]).reshape(1)
+    state = torch.cat((torch.tensor(x_0).float(), alpha, delta))
+    with torch.no_grad():
+        for i in range(1, len(trajectory)):
+            x = model(state.unsqueeze(0)).squeeze(0)
+            state = torch.cat((x, alpha, torch.tensor(trajectory[i][-1]).reshape(1).float()))
             prediction.append(x.tolist())
 
     return prediction
