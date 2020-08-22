@@ -42,7 +42,7 @@ def load_model_from_path(path, in_dim, out_dim):
     name = path.split('/')[-1].split('.')[0]
     module = name.split('_')[0]
 
-    if module in {'NewRSResNet', 'RTResNet', 'RSResNet'}:
+    if module in {'NewRSResNet', 'RTResNet', 'RSResNet', 'NewRTResNet'}:
         nodes, layers, k = [int(i) for i in name.split('_')[1:]]
         model = getattr(models, module)(h_dim=nodes, n_h_layers=layers, k=k, in_dim=in_dim, out_dim=out_dim)
         caption = '{}{}N{}L{}K'.format(module, nodes, layers, k)
@@ -110,7 +110,7 @@ def forecast(model_path, truth_path, delta=False, save_fig=False):
     e = sum(e_t) / len(e_t)
     t = sum(t_t[1:]) / len(t_t[1:])
     logger.info('With model {}:'.format(name))
-    logger.info('Average time consumption: {}s'.format(t))
+    logger.info('Average time consumption: {:0.5f} seconds'.format(t))
     logger.info('Mean relative validation error: {}'.format(e))
 
 

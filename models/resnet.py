@@ -137,3 +137,16 @@ class NewRSResNet(RSResNet):
     def forward(self, x):
         out = self.layer(x)
         return out[:self.out_dim] if len(x.size()) == 1 else out[:, :self.out_dim]
+
+
+class NewRTResNet(RTResNet):
+    def forward(self, x):
+        if len(x.size()) == 1:
+            x[-1] /= self.k
+        else:
+            x[:, -1] /= self.k
+
+        for i in range(self.k):
+            x = self.layer(x)
+
+        return x[:self.out_dim] if len(x.size()) == 1 else x[:, :self.out_dim]

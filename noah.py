@@ -52,7 +52,7 @@ def ray_tuning(**kwargs):
         train_loader, val_loader = utils.data.loader.get_data_loaders(data, batch_size=bs, num_workers=4)
         in_dim, out_dim = len(data[0][0]), len(data[0][1])
 
-        if cfg['model'] in {'RSResNet', 'RTResNet', 'NewRSResNet'}:
+        if cfg['model'] in {'RSResNet', 'RTResNet', 'NewRSResNet', 'NewRTResNet'}:
             model = getattr(models, cfg['model'])(in_dim=in_dim, out_dim=out_dim,
                                                   k=k, n_h_layers=n_layers, h_dim=n_nodes)
             name = cfg['model'] + '_' + str(n_nodes) + '_' + str(n_layers) + '_' + str(k) + '.pth'
@@ -71,7 +71,6 @@ def ray_tuning(**kwargs):
             "L1": Loss(criterion)
         }
         evaluator = create_supervised_evaluator(model, metrics=val_metrics)
-        print(model)
 
         @trainer.on(Events.EPOCH_COMPLETED)
         def log_training_results(trainer):
