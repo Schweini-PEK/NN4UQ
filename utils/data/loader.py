@@ -18,7 +18,7 @@ class LoadDataset(Dataset):
                 temp.append(self.data[i])
 
             self.data = temp
-            logging.info('{} dataset have been loaded.'.format(self.__len__()))
+            logging.info('{} samples have been loaded.'.format(self.__len__()))
 
     def __getitem__(self, item):
         x, y = self.data[item]
