@@ -28,6 +28,20 @@ def apply_dropout(m):
         m.train()
 
 
+def mre(x_hat, x):
+    """Calculate the mean relative error
+
+    :param x_hat: The state vector prediction matrix: n_state * n_time_step
+    :param x: The true state vector matrix
+    :return: The mean relative validation error e_t
+    """
+    e_t = 0
+    for i in range(len(x_hat)):
+        e_t += np.linalg.norm(x_hat[i] - x[i], 2) / np.linalg.norm(x, 2)
+
+    return e_t / len(x_hat)
+
+
 def get_pth_from_dir(root):
     models_path = [join(root, f) for f in os.listdir(root) if isfile(join(root, f))]
     return models_path
