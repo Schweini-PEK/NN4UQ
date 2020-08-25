@@ -125,3 +125,18 @@ def get_io_dim(path):
     out_dim = int(re.search('x(.*)a', path).group(1))
     in_dim = out_dim + int(re.search('(?<=a)(\d+)(?=\D)', path).group(1))
     return in_dim, out_dim
+
+
+def plot_loss(loss_dir):
+    losses_pth = kits.get_pth_from_dir(loss_dir)
+    fig, ax = plt.subplots()
+    scalar_map = kits.color_wheel(len(losses_pth), theme='prism')
+    for i, pth in enumerate(losses_pth):
+        loss = get_loss_from_ray(pth)
+        color = scalar_map.to_rgba(i)
+        ax.plot(loss, color=color, label=pth.split('/')[-1].split('.')[0])
+    leg = ax.legend()
+    plt.xlabel('Iterations')
+    plt.ylabel('L1 Loss')
+    plt.title('Validation Losses Comparison')
+    plt.show()
