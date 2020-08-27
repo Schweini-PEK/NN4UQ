@@ -37,13 +37,13 @@ def mre(x_hat, x):
     """
     e_t = 0
     for i in range(len(x_hat)):
-        e_t += np.linalg.norm(x_hat[i] - x[i], 2) / np.linalg.norm(x, 2)
+        e_t += np.linalg.norm(x_hat[i] - x[i], 2) / np.linalg.norm(x[i], 2)
 
     return e_t / len(x_hat)
 
 
 def get_pth_from_dir(root):
-    models_path = [join(root, f) for f in os.listdir(root) if isfile(join(root, f))]
+    models_path = [join(root, f) for f in os.listdir(root) if (isfile(join(root, f)) and not f.startswith('.'))]
     return models_path
 
 
