@@ -1,6 +1,7 @@
 import configparser
 import logging
 import os
+import random
 import time
 
 import fire
@@ -16,6 +17,7 @@ from ray.tune.suggest.bayesopt import BayesOptSearch
 from ray.tune.suggest.hyperopt import HyperOptSearch
 from torch import nn
 from torch import optim
+from torch.utils.data import DataLoader
 
 import models
 import utils
@@ -24,7 +26,8 @@ from utils.kits import setup_seed
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-SEED = 6
+SEED = random.randint(11, 25)
+logger.info('SEED: {}'.format(SEED))
 
 
 def ray_tuning(**kwargs):
@@ -51,6 +54,8 @@ def ray_tuning(**kwargs):
         data = utils.data.loader.LoadDataset(path=root + cfg['path'])
         train_loader, val_loader = utils.data.loader.get_data_loaders(data, batch_size=bs, num_workers=4)
         in_dim, out_dim = len(data[0][0]), len(data[0][1])
+        data_2 = utils.data.loader.LoadDataset(path=root + 'dataset/50_val_x3a6_1177.pkl')
+        test_loader_2 = DataLoader(data_2, batch_size=bs, num_workers=4, shuffle=True)
 
         if cfg['model'] in {'RSResNet', 'RTResNet', 'NewRSResNet', 'NewRTResNet'}:
             model = getattr(models, cfg['model'])(in_dim=in_dim, out_dim=out_dim,
@@ -82,7 +87,9 @@ def ray_tuning(**kwargs):
         def log_validation_results(trainer):
             evaluator.run(val_loader)
             metrics = evaluator.state.metrics
-            tune.track.log(val_loss=metrics["L1"])
+            evaluator.run(test_loader_2)
+            metrics_2 = evaluator.state.metrics
+            tune.track.log(val_loss=metrics["L1"] * 0.3 + metrics_2["L1"] * 0.7)
 
         trainer.add_event_handler(Events.ITERATION_COMPLETED, TerminateOnNan())
         trainer.run(train_loader, max_epochs=int(cfg['epoch']))

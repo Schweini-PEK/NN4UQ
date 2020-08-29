@@ -75,7 +75,7 @@ def processor(src, trg, name, f_type, test=False):
             samples = []
             index = list(range(len(x_raw)))
             random.shuffle(index)
-            for i in index[:1000]:
+            for i in index[:5000]:
                 x = list(map(float, x_raw[i].tolist()))
                 y = list(map(float, y_raw[i].tolist()))
                 samples.append([torch.tensor(x), torch.tensor(y)])

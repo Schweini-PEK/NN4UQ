@@ -94,8 +94,6 @@ def forecast(model_path, truth_path, delta=False, save_fig=False):
         t_t.append(time.time() - t0)
 
         trajectory = np.array(trajectory)[:, :-1]
-        print('PREDICTION, ', prediction)
-        print('TRAJECTORY, ', trajectory)
         e_t.append(kits.mre(prediction, trajectory))
 
         for j in range(out_dim):
@@ -108,7 +106,6 @@ def forecast(model_path, truth_path, delta=False, save_fig=False):
         plt.savefig(fig_name, dpi=2000)
     plt.show()
 
-    print(e_t)
     e = sum(e_t) / len(e_t)
     t = sum(t_t[1:]) / len(t_t[1:])
     logger.info('With model {}:'.format(name))
